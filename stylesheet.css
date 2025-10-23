@@ -80,9 +80,10 @@ papertitle {
   color: #404040;
   font-size: 0.95em;
 }
-strong{
-    font-weight: 500;
-    color: #330662;
+.venue {
+  display: inline;;
+  color: #702b9d;
+  font-size: 0.95em;
 }
 
 
@@ -166,4 +167,60 @@ html {
   background-color: #57068C;
   color: #ffffff;
   text-decoration: none;
+}
+
+/* ===== Theme Toggle ===== */
+.theme-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-left: 25px;
+  color: #57068C;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s ease;
+}
+
+.theme-toggle:hover {
+  transform: rotate(15deg);
+}
+
+/* ===== Dark Theme ===== */
+:root.dark {
+  --bg: #1e1e1e;
+  --text: #f0f0f0;
+  --accent: #b891f5;
+  --card-bg: #2a2a2a;
+}
+
+:root {
+  --bg: #ffffff;
+  --text: #333333;
+  --accent: #57068C;
+  --card-bg: #ffffff;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.section-card {
+  background-color: var(--card-bg);
+  transition: background-color 0.3s;
+}
+
+a, .icon-btn {
+  color: var(--accent);
+}
+
+.icon-btn {
+  border-color: var(--accent);
+}
+
+.icon-btn:hover {
+  background-color: var(--accent);
+  color: #fff;
 }
