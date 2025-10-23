@@ -8,6 +8,7 @@ body, td, th, tr, p, a {
 h2, .section-title {
   font-size: 22px;
   font-weight: 700;
+  font-family: 'Merriweather', serif;
   /* color: #57068C; */
   border-bottom: 2px solid #E5E5E5;
   padding-bottom: 5px;
@@ -24,7 +25,7 @@ border-bottom: 1px solid #e5e5e5;
 position: relative; 
 } */
 .topbar {
-  background-color: #ffffff; /* white background */
+  background-color: var(--top-bg);
   width: 100%;
   height: 50px;
   border-bottom: 1px solid #e5e5e5;
@@ -67,22 +68,22 @@ a {
 }
 
 a:hover {
-  color: #7A33B6;
+  color: var(--hover-a);
   text-decoration: underline;
 }
 
 papertitle {
   font-weight: 700;
-  color:#404040;
+  color: var(--text);
 }
 .authorlist {
   display: inline;
-  color: #404040;
+  color: var(--text);
   font-size: 0.95em;
 }
 .venue {
-  display: inline;;
-  color: #702b9d;
+  display: inline;
+  color: var(--a);
   font-size: 0.95em;
 }
 
@@ -108,7 +109,7 @@ papertitle {
 .section-card {
   background-color: #fff;
   border-radius: 10px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 6px var(--shadow);
   padding: 20px 30px;
 }
 
@@ -116,7 +117,7 @@ papertitle {
 .profile-photo {
   width: clamp(160px, 22vw, 260px);
   border-radius: 12px;
-  box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+  box-shadow: 0 3px 10px var(--shadow);
   object-fit: cover;
   justify-self: end;
 }
@@ -169,38 +170,66 @@ html {
   text-decoration: none;
 }
 
+
+
 /* ===== Theme Toggle ===== */
 .theme-toggle {
-  background: none;
+  background: var(--top-bg);
   border: none;
   cursor: pointer;
   margin-left: 25px;
-  color: #57068C;
+  color: var(--accent);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.3s ease;
+  transition: transform 0.3s ease, color 0.3s ease;
 }
 
 .theme-toggle:hover {
-  transform: rotate(15deg);
+  transform: scale(1.1);
 }
 
-/* ===== Dark Theme ===== */
-:root.dark {
-  --bg: #1e1e1e;
-  --text: #f0f0f0;
-  --accent: #b891f5;
-  --card-bg: #2a2a2a;
+/* Show only one icon depending on theme */
+.sun-icon {
+  display: inline;
 }
 
+.moon-icon {
+  display: none;
+}
+
+:root.dark .sun-icon {
+  display: none;
+}
+
+:root.dark .moon-icon {
+  display: inline;
+}
+
+/* ===== Color Variables ===== */
 :root {
   --bg: #ffffff;
-  --text: #333333;
+  --text: #404040;
   --accent: #57068C;
+  --a: #57068C;
+  --hover-a: #ab82c5;
   --card-bg: #ffffff;
+  --top-bg: #ffffff;
+  --shadow: rgba(0, 0, 0, 0.08);
 }
 
+:root.dark {
+  --bg: #404040;
+  --text: #d6d6d6;
+  --accent: #b891f5;
+  --a: #b891f5;
+  --hover-a: #ab82c5;
+  --card-bg: #2a2a2a;
+  --top-bg: #404040;
+  --shadow: rgba(255,255,255,0.12);
+}
+
+/* ===== Theme Transitions ===== */
 body {
   background-color: var(--bg);
   color: var(--text);
@@ -213,14 +242,14 @@ body {
 }
 
 a, .icon-btn {
-  color: var(--accent);
+  color: var(--a);
 }
 
 .icon-btn {
-  border-color: var(--accent);
+  border-color: var(--a);
 }
 
 .icon-btn:hover {
-  background-color: var(--accent);
+  background-color: var(--a);
   color: #fff;
 }
