@@ -215,6 +215,7 @@ html {
   --card-bg: #ffffff;
   --top-bg: #ffffff;
   --shadow: rgba(0, 0, 0, 0.08);
+  --highlight: #ed1b2f;
 }
 
 :root.dark {
@@ -226,6 +227,7 @@ html {
   --card-bg: #2a2a2a;
   --top-bg: #404040;
   --shadow: rgba(255,255,255,0.12);
+  --highlight: #ff6f91;
 }
 
 /* ===== Theme Transitions ===== */
@@ -242,6 +244,11 @@ body {
 
 a, .icon-btn {
   color: var(--a);
+}
+
+/* Add this to stylesheet.css */
+.highlight_message {
+  color: var(--highlight); /* Uses your existing #57068C or #b891f5 */
 }
 
 .icon-btn {
