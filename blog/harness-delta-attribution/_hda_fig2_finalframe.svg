@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 300" width="960" height="300">
+  <defs>
+    <marker id="hda-arrow-t" viewBox="0 0 12 12" refX="11.7" refY="6" markerWidth="2.7" markerHeight="2.7" orient="auto" markerUnits="strokeWidth">
+      <path d="M 1 1.5 L 10.5 6 L 1 10.5 z" fill="#E5C87F"/>
+    </marker>
+    <marker id="hda-arrow-a" viewBox="0 0 12 12" refX="11.7" refY="6" markerWidth="2.7" markerHeight="2.7" orient="auto" markerUnits="strokeWidth">
+      <path d="M 1 1.5 L 10.5 6 L 1 10.5 z" fill="#D69C89"/>
+    </marker>
+  </defs>
+  <style>
+    .ax { stroke:#cfd2d6; stroke-width:3; stroke-linecap:round; }
+    .delta { fill:none; stroke:#cfd2d6; stroke-width:2; stroke-dasharray:5 5; opacity:.8; }
+    .glabel { fill:#7a7f87; font-size:14px; font-weight:700; font-family:Georgia,'Times New Roman',serif; font-style:italic; }
+    .seg { stroke-width:10; stroke-linecap:round; }
+    .small { font-size:13px; font-weight:650; fill:#7a7f87; font-family:Inter,Arial,sans-serif; }
+    .mk { font-family:Georgia,'Times New Roman',serif; font-style:italic; font-size:22px; font-weight:800; fill:#15171a; }
+    .sub { font-family:Georgia,'Times New Roman',serif; font-style:normal; font-size:12.5px; font-weight:700; }
+    .seglab { font-family:Georgia,'Times New Roman',serif; font-size:15px; font-weight:650; }
+    .flab { font-family:Georgia,'Times New Roman',serif; font-style:italic; font-size:14px; font-weight:600; }
+  </style>
+
+  <rect x="0" y="0" width="960" height="300" fill="#ffffff"/>
+
+  <line class="ax" x1="110" y1="150" x2="850" y2="150"/>
+  <path class="delta" d="M 110 94 C 260 52, 680 52, 850 94"/>
+  <text class="glabel" x="480" y="56" text-anchor="middle">observed gain:  S(E) − S(B)</text>
+
+  <line class="seg" stroke="#E5C87F" x1="110" y1="150" x2="300" y2="150" marker-end="url(#hda-arrow-t)"/>
+  <line class="seg" stroke="#99BEA5" x1="300" y1="150" x2="655" y2="150"/>
+  <line class="seg" stroke="#D69C89" x1="850" y1="150" x2="655" y2="150" marker-end="url(#hda-arrow-a)"/>
+
+  <text class="seglab" fill="#6E5422" x="205" y="120" text-anchor="middle">T · Test-Time Scaling</text>
+  <text class="seglab" fill="#365F44" x="478" y="120" text-anchor="middle">G · Generalizable Improvement</text>
+  <text class="seglab" fill="#7A3C2E" x="752" y="120" text-anchor="middle">O · Overfitting</text>
+
+  <text class="flab" fill="#6E5422" x="150" y="189" text-anchor="start">T = S(B</text>
+  <text class="sub"  fill="#6E5422" x="196" y="193" text-anchor="start">cc</text>
+  <text class="flab" fill="#6E5422" x="212" y="189" text-anchor="start">) − S(B)</text>
+
+  <text class="flab" fill="#365F44" x="410" y="189" text-anchor="start">G = S(E</text>
+  <text class="sub"  fill="#365F44" x="456" y="193" text-anchor="start">neutral</text>
+  <text class="flab" fill="#365F44" x="493" y="189" text-anchor="start">) − S(B</text>
+  <text class="sub"  fill="#365F44" x="537" y="193" text-anchor="start">cc</text>
+  <text class="flab" fill="#365F44" x="553" y="189" text-anchor="start">)</text>
+
+  <text class="flab" fill="#7A3C2E" x="690" y="189" text-anchor="start">O = S(E) − S(E</text>
+  <text class="sub"  fill="#7A3C2E" x="783" y="193" text-anchor="start">neutral</text>
+  <text class="flab" fill="#7A3C2E" x="820" y="189" text-anchor="start">)</text>
+
+  <circle cx="110" cy="150" r="8" fill="#15171a"/>
+  <circle cx="300" cy="150" r="8" fill="#E5C87F"/>
+  <circle cx="655" cy="150" r="8" fill="#99BEA5"/>
+  <circle cx="850" cy="150" r="8" fill="#15171a"/>
+
+  <line class="ax" stroke="#15171a" x1="110" y1="122" x2="110" y2="170"/>
+  <line class="ax" stroke="#E5C87F" x1="300" y1="122" x2="300" y2="170"/>
+  <line class="ax" stroke="#99BEA5" x1="655" y1="122" x2="655" y2="170"/>
+  <line class="ax" stroke="#15171a" x1="850" y1="122" x2="850" y2="170"/>
+
+  <text class="mk" x="110" y="214" text-anchor="middle">B</text>
+  <text class="small" x="110" y="235" text-anchor="middle">base harness</text>
+
+  <text class="mk" fill="#6E5422" x="296" y="214" text-anchor="middle">B</text>
+  <text class="sub" fill="#6E5422" x="307" y="219" text-anchor="start">cc</text>
+  <text class="small" x="300" y="235" text-anchor="middle">B compute-matched to E</text>
+
+  <text class="mk" fill="#365F44" x="648" y="214" text-anchor="middle">E</text>
+  <text class="sub" fill="#365F44" x="659" y="219" text-anchor="start">neutral</text>
+  <text class="small" x="655" y="235" text-anchor="middle">E with overfitting neutralized</text>
+
+  <text class="mk" x="850" y="214" text-anchor="middle">E</text>
+  <text class="small" x="850" y="235" text-anchor="middle">evolved harness</text>
+</svg>

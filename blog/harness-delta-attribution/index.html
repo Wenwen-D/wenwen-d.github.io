@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What Evolves When We Talk about Harness Evolution</title>
+<meta name="description" content="Harness evolution makes benchmark scores rise, but the score is not the whole story. We decompose reported gains into artifact, test-time scaling, and genuine improvement.">
+<style>
+  /* =========================================================================
+     DESIGN SYSTEM — Candidate B (clean technical blog).
+     Fonts are routed through variables: change --font-body / --font-head /
+     --font-mono in ONE place to re-typeset the whole document.
+     Semantic color (A/T/G) is reserved for attribution figures + legends only.
+     ========================================================================= */
+  :root {
+    /* --- type --- */
+    --font-body: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-head: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+
+    /* --- neutral ink + surfaces (light) --- */
+    --page:#ffffff;
+    --text-1:#15171a;      /* primary ink */
+    --text-2:#41464d;      /* secondary */
+    --muted:#7a7f87;       /* captions, labels */
+    --rule:#e8eaed;        /* hairlines */
+    --rule-2:#d8dbdf;      /* stronger rule (table header underline) */
+    --track:#cfd2d6;       /* empty chart track */
+    --card:#fafbfc;        /* inset note / details background */
+    --card-rule:#eceef1;
+    --code-bg:#f2f4f6;
+
+    /* --- single accent (links, method highlight) --- */
+    --accent:#2563eb;
+    --accent-soft:#d4dcf0;
+
+    /* --- semantic T/G/A (figures only) — sampled from Figure 1 palette --- */
+    --genuine:#99BEA5;  --genuine-ink:#365F44;
+    --tts:#E5C87F;      --tts-ink:#6E5422;
+    --artifact:#D69C89; --artifact-ink:#7A3C2E;
+    --train:#9aa3ad;
+    --test:#3f7fd6;
+    --neg:#E16652;
+
+    --maxw:780px;        /* reading column */
+    --maxw-wide:1040px;  /* figures may break out to here */
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page:#0f1113;
+      --text-1:#f0f2f4; --text-2:#c3c8cf; --muted:#8b9099;
+      --rule:#23262b; --rule-2:#2e323a; --track:#3a3f47;
+      --card:#16191d; --card-rule:#262a30; --code-bg:#1b1f24;
+      --accent:#6ea0ff; --accent-soft:#2b3550;
+      --genuine:#99BEA5; --genuine-ink:#B6D2BE;
+      --tts:#E5C87F;     --tts-ink:#F0DBA2;
+      --artifact:#D69C89; --artifact-ink:#E6B8AA;
+      --train:#6b7480;
+      --test:#6ea0ff;
+      --neg:#E87862;
+    }
+  }
+
+  * { box-sizing:border-box; }
+  html { scroll-behavior:smooth; -webkit-text-size-adjust:100%; }
+  body {
+    margin:0; background:var(--page); color:var(--text-1);
+    font-family:var(--font-body); font-size:16.5px; line-height:1.62;
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  }
+
+  /* ---------- top bar (matches personal site: fixed, right-aligned nav) ---------- */
+  .topbar { position:fixed; top:0; left:0; width:100%; height:48px; z-index:1100;
+    background:var(--page); border-bottom:1px solid var(--rule); }
+  .topbar .nav-container { max-width:1100px; margin:0 auto; height:100%;
+    display:flex; justify-content:flex-end; align-items:center; padding:0 30px; }
+  .topbar .nav-links a { font-family:var(--font-head); font-size:14px; font-weight:600;
+    margin-left:22px; color:var(--text-2); text-decoration:none; transition:color .15s; }
+  .topbar .nav-links a:hover { color:var(--accent); text-decoration:none; }
+  body { padding-top:48px; }
+
+  .col { max-width:var(--maxw); margin:0 auto; padding:0 24px; }
+  .wide { max-width:var(--maxw-wide); }
+
+  a { color:var(--accent); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+  em { font-style:italic; }
+  strong, b { font-weight:680; }
+  /* numbered citation marker — links to the References section */
+  sup.cite { font-family:var(--font-head); font-size:.72em; font-weight:600; line-height:0;
+    vertical-align:super; }
+  sup.cite a { color:var(--accent); text-decoration:none; }
+  sup.cite a:hover { text-decoration:underline; }
+  /* references list */
+  ol.refs { list-style:none; counter-reset:ref; margin:8px 0 0; padding:0; }
+  ol.refs li { counter-increment:ref; position:relative; padding-left:34px; margin:0 0 14px;
+    font-size:14.5px; line-height:1.5; color:var(--text-2); scroll-margin-top:16px; }
+  ol.refs li::before { content:"[" counter(ref) "]"; position:absolute; left:0; top:0;
+    font-family:var(--font-head); font-variant-numeric:tabular-nums; color:var(--muted); font-weight:600; }
+  ol.refs li:target { color:var(--text-1); }
+  ol.refs li:target::before { color:var(--accent); }
+  ol.refs .authors { color:var(--text-1); }
+  ol.refs .venue { font-style:italic; }
+  ol.refs .pending-tag { font-family:var(--font-head); font-size:11px; letter-spacing:.05em;
+    text-transform:uppercase; font-weight:700; color:var(--muted); margin-left:6px; }
+  code { font-family:var(--font-mono); font-size:.86em; background:var(--code-bg);
+    padding:1px 5px; border-radius:4px; }
+  .case-link { display:inline-flex; align-items:center; gap:4px; font-family:var(--font-head);
+    font-size:.8em; font-weight:600; white-space:nowrap; color:var(--accent); text-decoration:none;
+    border:1px solid color-mix(in srgb, var(--accent) 30%, transparent); border-radius:999px;
+    padding:1px 10px; margin-left:4px; vertical-align:baseline; line-height:1.7;
+    transition:background .12s, border-color .12s; }
+  .case-link:hover { text-decoration:none; background:color-mix(in srgb, var(--accent) 10%, var(--page));
+    border-color:var(--accent); }
+  .benchmark-name { font-family:var(--font-mono); font-size:.85em; font-weight:400;
+    letter-spacing:0; color:var(--text-1); white-space:nowrap;
+    background:color-mix(in srgb, var(--accent) 9%, var(--page));
+    border:1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+    border-radius:5px; padding:1px 6px; }
+  @media (prefers-color-scheme:dark){
+    .benchmark-name { color:var(--accent);
+      background:color-mix(in srgb, var(--accent) 16%, var(--page));
+      border-color:color-mix(in srgb, var(--accent) 34%, transparent); }
+  }
+  /* ---------- header ---------- */
+  header.hero { padding:64px 0 8px; }
+  .eyebrow { font-family:var(--font-head); font-size:12px; letter-spacing:.13em;
+    text-transform:uppercase; color:var(--muted); font-weight:600; }
+  h1 { font-family:var(--font-head); font-size:38px; line-height:1.12;
+    letter-spacing:-0.025em; font-weight:730; margin:14px 0 18px; }
+  .lede { font-size:19.5px; line-height:1.5; color:var(--text-2); margin:0 0 26px; max-width:660px; }
+  .byline { display:flex; flex-wrap:wrap; align-items:center; gap:8px 16px;
+    font-family:var(--font-head); font-size:15px; color:var(--muted);
+    border-top:1px solid var(--rule); border-bottom:1px solid var(--rule); padding:14px 0; }
+  .byline b { color:var(--text-2); font-weight:600; }
+  .byline .author { color:var(--text-1); font-weight:400; }
+  .byline .btns { display:flex; gap:8px; margin-left:auto; }
+  .byline .btns a { font-weight:600; font-size:12.5px; color:var(--accent);
+    border:1px solid var(--accent-soft); border-radius:8px; padding:6px 13px; }
+  .byline .btns a:hover { text-decoration:none; background:var(--accent-soft); }
+
+  /* ---------- back-to-top button ---------- */
+  #to-top { position:fixed; right:24px; bottom:24px; z-index:80;
+    width:42px; height:42px; display:flex; align-items:center; justify-content:center;
+    background:var(--card); color:var(--text-2); border:1px solid var(--rule-2); border-radius:50%;
+    cursor:pointer; opacity:0; visibility:hidden; transform:translateY(8px);
+    transition:opacity .18s, transform .18s, visibility .18s, color .12s, border-color .12s;
+    box-shadow:0 4px 16px rgba(0,0,0,.12); }
+  #to-top.show { opacity:1; visibility:visible; transform:translateY(0); }
+  #to-top:hover { color:var(--accent); border-color:var(--accent); }
+  #to-top svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2.2;
+    stroke-linecap:round; stroke-linejoin:round; }
+  @media (max-width:1023px){ #to-top { right:16px; bottom:16px; } }
+
+  /* ---------- table of contents ----------
+     Narrow screens: inline block below the header (centered like .col).
+     Wide screens (≥1200px): fixed left rail anchored a constant gap to the
+     left of the centered reading column, so it never drifts or overlaps. */
+  .toc-wrap { max-width:var(--maxw); margin:0 auto; padding:0 24px; }
+  nav.toc { margin:34px 0 8px; }
+  .backlink { font-family:var(--font-head); font-size:13px; margin-bottom:16px; display:inline-block; color:var(--muted); }
+  .backlink:hover { color:var(--accent); text-decoration:none; }
+  nav.toc .toc-label { font-family:var(--font-head); font-size:11px; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--muted); font-weight:700; margin-bottom:10px; }
+  nav.toc ol { list-style:none; margin:0; padding:0; columns:2; column-gap:32px; }
+  /* hanging indent: number in a fixed gutter, wrapped text aligns under line 1 */
+  nav.toc li { font-family:var(--font-head); font-size:14px; line-height:1.35; margin:0 0 9px;
+    break-inside:avoid; color:var(--text-2); display:flex; gap:8px; align-items:baseline; }
+  nav.toc li.sub { padding-left:21px; font-size:13px; margin-top:-3px; }
+  nav.toc li.sub a { color:var(--muted); }
+  nav.toc li .n { color:var(--muted); font-variant-numeric:tabular-nums; flex:none;
+    width:13px; text-align:right; }
+  nav.toc a { color:var(--text-2); flex:1; transition:color .12s; }
+  nav.toc a:hover { color:var(--accent); text-decoration:none; }
+  nav.toc a.active { color:var(--text-1); font-weight:650; }
+
+  /* Wide screens: reserve a fixed left gutter for the rail (via body padding),
+     so the rail is truly fixed and never scrolls — and it activates at a
+     modest width instead of needing symmetric 1200px gutters. */
+  @media (min-width:1024px) {
+    body { padding-left:280px; }
+    .toc-wrap { max-width:none; margin:0; padding:0; }
+    nav.toc { position:fixed; top:48px; left:0; width:260px; height:calc(100vh - 48px); overflow-y:auto;
+      margin:0; padding:40px 26px 40px; }
+    nav.toc ol { columns:1; }
+    /* active bar sits left of the number, spanning the whole (possibly wrapped) item */
+    nav.toc li { margin:0 0 13px; padding-left:12px; border-left:2px solid transparent;
+      transition:border-color .12s; }
+    nav.toc li.sub { margin-left:21px; margin-top:-6px; padding-left:12px; }
+    nav.toc li:has(a.active) { border-left-color:var(--accent); }
+    nav.toc li:has(a.active) .n { color:var(--accent); }
+    nav.toc a.active { color:var(--accent); }
+  }
+
+  /* ---------- section headings ---------- */
+  section { padding-top:8px; }
+  h2 { font-family:var(--font-head); font-size:12px; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--muted); font-weight:700; margin:56px 0 6px; scroll-margin-top:16px; }
+  .h2-title { font-family:var(--font-head); font-size:26px; line-height:1.18;
+    letter-spacing:-0.018em; font-weight:730; margin:0 0 8px; color:var(--text-1); }
+  .section-sub { color:var(--text-2); font-size:16px; margin:0 0 18px; }
+
+  /* section TL;DR / standfirst — margin label + bordered summary (kept distinct
+     from body: smaller, secondary ink, accent margin label) */
+  .tldr { display:flex; gap:16px; margin:0 0 26px; align-items:stretch; }
+  .tldr .lab { flex:none; font-family:var(--font-head); font-size:11px; letter-spacing:.1em;
+    text-transform:uppercase; font-weight:700; color:var(--accent); width:52px; text-align:right; padding-top:3px; }
+  .tldr .txt { font-size:15px; line-height:1.55; color:var(--text-2); margin:0;
+    border-left:3px solid var(--accent-soft); padding-left:18px; font-weight:400; }
+  @media (max-width:640px) {
+    .tldr { gap:12px; }
+    .tldr .lab { width:auto; text-align:left; }
+  }
+  h3 { font-family:var(--font-head); font-size:19px; font-weight:700; letter-spacing:-0.01em;
+    margin:34px 0 6px; scroll-margin-top:16px; }
+  h4 { font-family:var(--font-head); font-size:15.5px; font-weight:680; margin:22px 0 4px; }
+  p { margin:14px 0; }
+
+  /* ---------- figures ---------- */
+  figure { margin:30px 0; }
+  .fig-head { font-family:var(--font-head); font-size:14px; font-weight:700; margin:0 0 2px; color:var(--text-1); }
+  .fig-note { font-family:var(--font-head); font-size:12.5px; color:var(--muted); margin:0 0 14px; }
+  figcaption { font-family:var(--font-head); font-size:13px; line-height:1.5; color:var(--muted); margin-top:12px; }
+  figcaption .lab { font-weight:700; color:var(--text-2); }
+  figure img { width:100%; border:1px solid var(--rule); border-radius:10px; display:block; }
+  figure svg { display:block; width:100%; height:auto; overflow:visible; }
+
+  /* ---------- overfitting / TTS example cards (Figure 4) ---------- */
+  .ocards { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:14px 0 0; }
+  @media (max-width:900px){ .ocards { grid-template-columns:repeat(2,1fr); } }
+  @media (max-width:560px){ .ocards { grid-template-columns:1fr; } }
+  .ocard { border:1px solid var(--card-rule); border-radius:12px; background:var(--card);
+    overflow:hidden; display:flex; flex-direction:column; }
+  .ocard .oc-head { display:flex; align-items:center; gap:7px; padding:9px 11px 7px; }
+  .ocard .oc-task { font-family:var(--font-mono); font-size:11px; font-weight:600; white-space:nowrap;
+    color:var(--text-1); text-decoration:none; border-radius:5px; padding:1px 6px;
+    background:color-mix(in srgb,var(--accent) 9%,var(--page));
+    border:1px solid color-mix(in srgb,var(--accent) 22%,transparent);
+    transition:background .12s,border-color .12s; }
+  a.oc-task:hover { text-decoration:none;
+    background:color-mix(in srgb,var(--accent) 18%,var(--page));
+    border-color:color-mix(in srgb,var(--accent) 40%,transparent); }
+  .ocard .oc-tag { margin-left:auto; font-size:9px; font-weight:700; letter-spacing:.04em;
+    text-transform:uppercase; border-radius:20px; padding:1px 7px;
+    color:var(--artifact-ink); background:color-mix(in srgb,var(--artifact) 20%,transparent); }
+  .ocard .oc-title { padding:0 11px 7px; font-size:11.5px; font-weight:650; color:var(--text-1); line-height:1.3; }
+  .ocard pre { margin:0; padding:9px 11px; background:var(--code-bg);
+    border-top:1px solid var(--card-rule); overflow-x:auto;
+    font-family:var(--font-mono); font-size:10px; line-height:1.45; color:var(--text-1); }
+  .ocard pre code { background:none; padding:0; border-radius:0; font-size:inherit; }
+  .ocard .art { background:color-mix(in srgb,var(--artifact) 20%,transparent); color:var(--artifact-ink);
+    font-weight:650; border-radius:3px; padding:0 2px; }
+  .ocard .tts { background:color-mix(in srgb,var(--tts) 30%,transparent); color:var(--tts-ink);
+    font-weight:650; border-radius:3px; padding:0 2px; }
+  .ocard .cm { color:var(--muted); }
+
+  /* section 1 mechanism examples */
+  .mechanism-strip { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr));
+    gap:10px; margin:16px 0 18px; }
+  .mechanism-card { border:1px solid var(--card-rule); background:var(--card);
+    border-radius:8px; padding:12px; min-height:104px; }
+  .mechanism-card p { margin:8px 0 0; color:var(--text-2); font-size:13.5px; line-height:1.45; }
+  .mechanism-head { display:flex; align-items:flex-start; gap:7px; color:var(--text-1);
+    font-family:var(--font-head); font-weight:620; line-height:1.22; }
+  .mechanism-head .title-text { display:block; min-width:0; }
+  .mechanism-icon { display:inline-flex; width:22px; height:22px; align-items:center; justify-content:center;
+    border-radius:6px; flex:none; opacity:.86; margin-top:1px; }
+  .mechanism-icon svg { width:15px; height:15px; stroke:#111; stroke-width:2; fill:none;
+    stroke-linecap:round; stroke-linejoin:round; }
+  .mechanism-icon.o { background:var(--artifact); }
+  .mechanism-icon.t { background:var(--tts); }
+  .mechanism-icon.g { background:var(--genuine); }
+  @media (max-width:680px) {
+    .mechanism-strip { grid-template-columns:1fr; }
+  }
+
+  /* chart legend */
+  .legend { display:flex; flex-wrap:wrap; gap:12px 20px; font-family:var(--font-head);
+    font-size:12.5px; color:var(--text-2); margin:2px 0 14px; }
+  .legend .item { display:inline-flex; align-items:center; gap:7px; }
+  .legend .sw { width:12px; height:12px; border-radius:3px; flex:none; }
+
+  /* Figure 1 scorecard */
+  .scorecard-figure { margin-top:20px; margin-bottom:30px; }
+  .scorecard-top { display:block; margin:0 0 10px; padding-bottom:0; border-bottom:none; }
+  .scorecard-top .fig-head { margin:0; }
+  .scorecard-canvas { padding-top:0; }
+  .lg-chips { display:flex; flex-wrap:wrap; justify-content:flex-start; gap:8px 16px;
+    font-family:var(--font-head); font-size:12.5px; color:var(--text-2); align-items:center; margin:3px 0 12px; }
+  .lg-chips .chip { display:inline-flex; align-items:center; gap:7px; padding:0; line-height:1.2; }
+  .lg-chips .k { width:18px; height:18px; border-radius:5px; display:inline-flex; align-items:center;
+    justify-content:center; color:#15171a; font-weight:750; font-size:10px; flex:none; }
+
+  /* scorecard executor selector — combined slider + clickable tabs.
+     One control governs the whole figure; drag the handle OR click a label. */
+  .sizerow { display:flex; align-items:flex-start; gap:14px; margin:14px 0 4px; padding-top:0;
+    border-top:none; font-family:var(--font-head); }
+  .sizerow .sizectl-label { flex:none; font-size:11px; letter-spacing:.07em; text-transform:uppercase;
+    font-weight:700; color:var(--muted); white-space:nowrap; padding-top:5px; }
+  .sizectl { position:relative; flex:1; max-width:580px; user-select:none; touch-action:none; }
+  .sizectl .labels { display:flex; }
+  .sizectl .labels button { flex:1; cursor:pointer; border:none; background:none; font-family:inherit;
+    font-size:13px; font-weight:600; color:var(--muted); padding:4px 2px 14px; text-align:center;
+    line-height:1.1; position:relative; }
+  .sizectl .labels button .cap { display:block; font-size:9px; font-weight:600; letter-spacing:.03em;
+    text-transform:uppercase; color:var(--muted); opacity:0; transition:opacity .12s; margin-top:2px; }
+  .sizectl .labels button.active { color:var(--text-1); }
+  .sizectl .labels button.active .cap { opacity:1; color:var(--accent); }
+  .sizectl .labels button.special::after { content:""; position:absolute; left:0; top:6px; bottom:24px;
+    width:1px; background:var(--rule-2); }
+  .sizectl .rail { position:absolute; left:0; right:0; bottom:8px; height:3px; background:var(--rule-2); border-radius:2px; }
+  .sizectl .rail .fill { position:absolute; left:0; top:0; height:100%; background:var(--accent); border-radius:2px; transition:width .12s; }
+  .sizectl .rail .thumb { position:absolute; top:50%; width:15px; height:15px; border-radius:50%;
+    background:var(--accent); border:3px solid var(--page); box-shadow:0 1px 4px rgba(0,0,0,.25);
+    transform:translate(-50%,-50%); cursor:grab; transition:left .12s; }
+  .sizectl.dragging .rail .thumb { cursor:grabbing; transition:none; }
+  .sizectl.dragging .rail .fill { transition:none; }
+  @media (max-width:760px) {
+    .lg-chips { justify-content:flex-start; }
+  }
+  @media (max-width:640px) {
+    .sizerow { flex-direction:column; gap:6px; }
+    .sizectl { max-width:none; width:100%; }
+    .sizectl .labels button { font-size:11.5px; }
+  }
+
+  /* chart hover tooltip */
+  .chart-tip { position:fixed; pointer-events:none; z-index:60; background:var(--page);
+    color:var(--text-1); border:1px solid var(--rule-2); border-radius:9px; padding:9px 11px;
+    font-family:var(--font-head); font-size:12px; line-height:1.4; box-shadow:0 6px 24px rgba(0,0,0,.14);
+    opacity:0; transition:opacity .1s; max-width:280px; }
+  .chart-tip .tv { font-weight:700; margin-top:2px; }
+  .chart-tip .tt-note { color:var(--muted); margin-top:5px; font-weight:400; }
+  .chart-tip .tip-card { width:260px; font-size:11px; line-height:1.32; }
+  .chart-tip .tip-top { display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-bottom:5px; }
+  .chart-tip .tip-task { font-weight:750; color:var(--text-1); }
+  .chart-tip .tip-size { color:var(--muted); white-space:nowrap; }
+  .chart-tip .tip-meta { display:grid; grid-template-columns:52px 1fr; gap:2px 7px; margin-bottom:6px; }
+  .chart-tip .tip-k { color:var(--muted); }
+  .chart-tip .tip-v { color:var(--text-1); font-weight:620; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .chart-tip .tip-scores { display:grid; gap:2px; padding:6px 0; border-top:1px solid var(--rule); border-bottom:1px solid var(--rule); font-variant-numeric:tabular-nums; }
+  .chart-tip .tip-row { display:grid; grid-template-columns:34px 1fr auto; gap:6px; align-items:baseline; }
+  .chart-tip .tip-row .split { color:var(--muted); }
+  .chart-tip .tip-row .score { color:var(--text-1); font-weight:650; }
+  .chart-tip .tip-row .gain { color:var(--muted); }
+  .chart-tip .tip-otg { display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; color:var(--text-2); font-variant-numeric:tabular-nums; }
+  .chart-tip .tip-otg span { display:inline-flex; align-items:center; gap:4px; }
+  .chart-tip .dot { width:7px; height:7px; border-radius:2px; display:inline-block; }
+  .chart-tip .dot.o { background:var(--artifact); }
+  .chart-tip .dot.t { background:var(--tts); }
+  .chart-tip .dot.g { background:var(--genuine); }
+  .chart-tip .tip-empty { color:var(--text-2); border-top:1px solid var(--rule); padding-top:6px; }
+  .chart-tip .tip-empty b { color:var(--text-1); }
+
+  .delta-modebar { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:0 0 14px; font-family:var(--font-head); }
+  .delta-modebar .lab { font-size:11px; letter-spacing:.07em; text-transform:uppercase; color:var(--muted); font-weight:700; }
+  .delta-modebar button { cursor:pointer; border:1px solid var(--rule-2); background:var(--page);
+    color:var(--text-2); border-radius:16px; padding:5px 12px; font:600 12.5px/1 var(--font-head); }
+  .delta-modebar button.active { border-color:var(--accent); background:var(--accent); color:#fff; }
+
+  /* ---------- inset note (replaces colored callouts) ---------- */
+  .note { font-size:15px; line-height:1.55; color:var(--text-2); background:var(--card);
+    border:1px solid var(--card-rule); border-radius:10px; padding:14px 16px; margin:22px 0; }
+  .note.tight { border:none; background:none; border-left:2px solid var(--rule-2);
+    border-radius:0; padding:2px 0 2px 16px; }
+  .note b { color:var(--text-1); }
+  .note .tag { font-family:var(--font-head); font-size:11px; letter-spacing:.06em;
+    text-transform:uppercase; font-weight:700; color:var(--muted); display:block; margin-bottom:4px; }
+
+  /* ---------- tables ---------- */
+  .tablewrap { overflow-x:auto; margin:16px 0; }
+  table { border-collapse:collapse; width:100%; font-family:var(--font-head); font-size:13.5px; }
+  th { text-align:left; font-weight:700; color:var(--muted); border-bottom:2px solid var(--rule-2);
+    padding:9px 12px; font-size:11.5px; letter-spacing:.03em; text-transform:uppercase; white-space:nowrap; }
+  td { padding:9px 12px; border-bottom:1px solid var(--rule); font-variant-numeric:tabular-nums; color:var(--text-2); }
+  td:first-child { font-weight:600; color:var(--text-1); }
+  tbody tr:hover { background:var(--card); }
+  .side-table { float:right; width:min(360px,48%); margin:2px 0 16px 24px; border:1px solid var(--rule);
+    border-radius:10px; background:var(--card); padding:12px 14px 10px; }
+  .side-table .side-title { font-family:var(--font-head); font-size:13px; font-weight:730; color:var(--text-1);
+    margin:0 0 8px; line-height:1.3; }
+  .side-table table { font-size:12px; line-height:1.35; }
+  .side-table th { font-size:10.5px; padding:6px 7px; letter-spacing:.025em; }
+  .side-table td { padding:7px; vertical-align:top; }
+  .side-table td:first-child { width:32%; }
+  .side-table .num { white-space:nowrap; color:var(--text-2); font-weight:450; }
+  .side-table .num.best { color:var(--text-1); font-weight:800; }
+  .side-table .out { color:var(--artifact-ink); font-weight:700; }
+  .side-table .note-row { font-size:11.5px; color:var(--muted); padding-top:8px; border-bottom:none; }
+  @media (max-width:720px) {
+    .side-table { float:none; width:100%; margin:18px 0; }
+  }
+  .mech { display:inline-flex; align-items:center; gap:8px; white-space:nowrap; }
+  .mech .k { width:20px; height:20px; border-radius:5px; display:inline-flex; align-items:center;
+    justify-content:center; color:#fff; font-weight:700; font-size:11px; flex:none; }
+
+  /* ---------- collapsible example panel ---------- */
+  details.panel { border:1px solid var(--card-rule); border-radius:10px; background:var(--card); margin:18px 0; }
+  details.panel > summary { list-style:none; cursor:pointer; padding:13px 16px;
+    font-family:var(--font-head); font-weight:640; font-size:14px; color:var(--text-1);
+    display:flex; align-items:center; gap:9px; }
+  details.panel > summary::-webkit-details-marker { display:none; }
+  details.panel > summary .caret { color:var(--muted); transition:transform .15s; font-size:12px; }
+  details.panel[open] > summary .caret { transform:rotate(90deg); }
+  details.panel > summary .kind { font-size:11px; letter-spacing:.05em; text-transform:uppercase;
+    color:var(--muted); font-weight:700; margin-right:2px; }
+  details.panel .panel-body { padding:0 16px 16px; color:var(--text-2); font-size:15px; }
+  details.panel .panel-body :first-child { margin-top:0; }
+
+  /* ---------- formula block ---------- */
+  .math { font-family:Georgia, "Times New Roman", serif; font-style:italic; font-weight:600;
+    color:var(--text-1); white-space:nowrap; }
+  .math sub { font-family:var(--font-head); font-style:normal; font-size:.68em; line-height:0; }
+  .tex { font-family:Georgia, "Times New Roman", serif; font-style:normal; font-weight:500;
+    color:var(--text-1); white-space:nowrap; }
+  .tex i { font-style:italic; font-weight:600; }
+  .tex sub { font-family:var(--font-head); font-style:normal; font-size:.68em; line-height:0; }
+  .formula { color:var(--text-1); margin:16px 0 18px; padding:0 4px; overflow-x:auto;
+    display:grid; grid-template-columns:max-content max-content max-content; justify-content:center;
+    column-gap:12px; row-gap:1px; align-items:baseline; font-size:18px; line-height:1.8; }
+  .eq-row { display:contents; }
+  .eq-row > span { white-space:nowrap; }
+  .eq-row .lhs { min-width:42px; text-align:right; color:var(--text-1); }
+  .eq-row .rel { color:var(--text-1); font-weight:500; }
+  .eq-row .rhs { color:var(--text-1); }
+  .eq-row var { font-family:Georgia, "Times New Roman", serif; font-style:italic; font-weight:600; }
+  .eq-row sub { font-family:var(--font-text); font-style:normal; font-size:.68em; line-height:0; }
+  .formula-single { margin-top:8px; }
+
+  /* ---------- compact pseudocode figure ---------- */
+  .loop-card { border:1px solid var(--card-rule); border-radius:10px; background:var(--card);
+    overflow:hidden; margin:14px 0 0; }
+  .loop-code { margin:0; padding:14px 16px; overflow-x:auto; color:var(--text-2);
+    font-family:var(--font-mono); font-size:12.5px; line-height:1.55; }
+  .loop-code code { background:none; padding:0; border-radius:0; font-size:inherit; }
+
+  /* citation block */
+  .cite-as { font-size:15px; color:var(--text-2); border-left:2px solid var(--rule-2);
+    padding:2px 0 2px 16px; margin:14px 0 18px; }
+  .bibtex-wrap { position:relative; }
+  .bibtex-wrap .copy-btn { position:absolute; top:8px; right:8px; font-family:var(--font-head);
+    font-size:11px; font-weight:600; color:var(--muted); background:var(--page);
+    border:1px solid var(--rule-2); border-radius:6px; padding:3px 9px; cursor:pointer; }
+  .bibtex-wrap .copy-btn:hover { color:var(--accent); border-color:var(--accent); }
+  pre.bibtex { margin:0; padding:16px 18px; overflow-x:auto; background:var(--card);
+    border:1px solid var(--card-rule); border-radius:10px; color:var(--text-2);
+    font-family:var(--font-mono); font-size:12.5px; line-height:1.55; }
+  pre.bibtex code { background:none; padding:0; border-radius:0; font-size:inherit; }
+  .loop-code .kw { color:var(--accent); font-weight:750; }
+  .loop-code .fn { color:var(--text-1); font-weight:650; }
+  .loop-code .cm { color:var(--muted); }
+  .loop-code .tr { color:var(--artifact); font-weight:720; }
+  .loop-code .vl { color:var(--genuine); font-weight:720; }
+  .loop-code .ts { color:var(--accent); font-weight:720; }
+  .loop-splits { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); border-top:1px solid var(--rule);
+    background:var(--page); font-family:var(--font-head); }
+  .loop-splits span { min-width:0; padding:8px 10px; border-right:1px solid var(--rule);
+    color:var(--text-2); font-size:12px; line-height:1.35; }
+  .loop-splits span:last-child { border-right:0; }
+  .loop-splits b { display:block; margin-bottom:1px; font-size:10.5px; letter-spacing:.08em;
+    text-transform:uppercase; }
+  .loop-splits .train b { color:var(--artifact); }
+  .loop-splits .val b { color:var(--genuine); }
+  .loop-splits .test b { color:var(--accent); }
+  @media (max-width:640px) {
+    .loop-code { font-size:11.6px; padding:12px; }
+    .loop-splits { grid-template-columns:1fr; }
+    .loop-splits span { border-right:0; border-bottom:1px solid var(--rule); }
+    .loop-splits span:last-child { border-bottom:0; }
+  }
+
+  /* ---------- evolution-loop flow figure ---------- */
+  .flow-details { margin:12px 0 0; border:1px solid var(--card-rule); border-radius:10px;
+    background:var(--card); overflow:hidden; }
+  .flow-details > summary { cursor:pointer; list-style:none; display:flex; justify-content:space-between;
+    align-items:center; gap:12px; padding:12px 14px; font-family:var(--font-head); color:var(--text-1); }
+  .flow-details > summary::-webkit-details-marker { display:none; }
+  .flow-summary-title { font-size:13.5px; font-weight:700; display:inline-flex; align-items:center; gap:7px; }
+  .flow-summary-title::before { content:""; width:0; height:0;
+    border-left:6px solid currentColor; border-top:4px solid transparent; border-bottom:4px solid transparent;
+    transition:transform .15s; }
+  .flow-details[open] .flow-summary-title::before { transform:rotate(90deg); }
+  .flow-toggle { color:var(--muted); font-size:11px; letter-spacing:.08em; text-transform:uppercase; font-weight:700; }
+  .flow-toggle::before { content:"Show "; }
+  .flow-details[open] .flow-toggle::before { content:"Hide "; }
+  .flow-card { margin:14px 0 0; border:1px solid var(--card-rule); border-radius:10px;
+    background:var(--page); padding:12px; }
+  .flow-details .loop-card { margin:0; border:0; border-top:1px solid var(--rule); border-radius:0; }
+  .flow-svg { display:block; width:100%; height:auto; overflow:visible; }
+  .flow-img { display:block; width:100%; height:auto; border:0 !important; border-radius:0; }
+  .flow-card.is-img{ border:0; padding:0; background:transparent; }
+  @media (prefers-color-scheme:dark){
+    /* the Figure 3 image is a transparent PNG with dark ink; back it with white so it stays legible */
+    .flow-card.is-img{ background:#fff; padding:14px; border-radius:10px; }
+    .flow-img{ border-radius:6px; }
+  }
+  .flow-box { fill:var(--card); stroke:var(--rule-2); stroke-width:1.2; }
+  .flow-box.fs { fill:var(--page); stroke:var(--accent-soft); }
+  .flow-box.train { stroke:var(--artifact); fill:color-mix(in srgb, var(--artifact) 10%, var(--page)); }
+  .flow-box.val { stroke:var(--genuine); fill:color-mix(in srgb, var(--genuine) 12%, var(--page)); }
+  .flow-box.test { stroke:var(--accent); fill:color-mix(in srgb, var(--accent) 9%, var(--page)); }
+  .flow-title { font-family:var(--font-head); font-size:13px; font-weight:750; fill:var(--text-1); }
+  .flow-text { font-family:var(--font-head); font-size:10.8px; fill:var(--text-2); }
+  .flow-note { font-family:var(--font-head); font-size:10px; fill:var(--muted); }
+  .flow-arrow { stroke:var(--text-2); stroke-width:1.6; fill:none; marker-end:url(#flow-arrow); }
+  .flow-arrow.train { stroke:var(--artifact); }
+  .flow-arrow.val { stroke:var(--genuine); }
+  .flow-arrow.test { stroke:var(--accent); }
+  .flow-arrow.feedback { stroke:var(--artifact); stroke-dasharray:5 5; }
+  .flow-pill { font-family:var(--font-head); font-size:9.5px; font-weight:700; letter-spacing:.05em;
+    text-transform:uppercase; fill:var(--muted); }
+  @media (max-width:640px) {
+    .flow-card { overflow-x:auto; }
+    .flow-svg { min-width:720px; }
+  }
+
+  /* ---------- HDA number-line figure ---------- */
+  .hda-card { border:1px solid var(--card-rule); border-radius:10px; background:var(--card);
+    overflow:hidden; margin:16px 0 0; }
+  .hda-stage { min-height:98px; padding:14px 16px 12px; border-bottom:1px solid var(--rule);
+    display:flex; align-items:center; }
+  .hda-stage-copy { margin:0; max-width:680px; color:var(--text-2);
+    font-family:var(--font-head); font-size:14.2px; line-height:1.5; }
+  .hda-step-num { color:var(--accent); font-weight:760; margin-right:4px; }
+  .hda-focus { color:var(--accent); font-weight:720; }
+  .hda-stage-copy sub { font-size:.68em; line-height:0; vertical-align:-0.22em; }
+  .hda-canvas { padding:8px 12px 0; overflow-x:visible; }
+  .hda-svg { display:block; width:100%; height:auto; }
+  .hda-axis { stroke:var(--track); stroke-width:3; stroke-linecap:round; }
+  .hda-delta { fill:none; stroke:var(--track); stroke-width:2; stroke-dasharray:5 5; opacity:.8; }
+  .hda-delta-label { fill:var(--muted); font-size:13px; font-weight:700; opacity:.9; }
+  .hda-seg { stroke-width:10; stroke-linecap:round; opacity:0;
+    transition:opacity 300ms ease, stroke-dashoffset 720ms cubic-bezier(.2,.8,.2,1); }
+  .hda-seg.t { stroke:var(--tts); }
+  .hda-seg.g { stroke:var(--genuine); }
+  .hda-seg.a { stroke:var(--artifact); }
+  .hda-tick { stroke-width:3; stroke-linecap:round; opacity:0; transform:translateY(6px);
+    transition:opacity 280ms ease, transform 280ms ease; }
+  .hda-tick.base, .hda-tick.evolved { opacity:1; transform:translateY(0); stroke:var(--text-1); }
+  .hda-tick.t { stroke:var(--tts); }
+  .hda-tick.g { stroke:var(--genuine); }
+  .hda-marker-label { font-family:Georgia, "Times New Roman", serif; font-style:italic;
+    font-size:21px; font-weight:800; fill:var(--text-1); opacity:0;
+    transform:translateY(6px); transition:opacity 280ms ease, transform 280ms ease; }
+  .hda-small-label { font-size:13px; font-weight:650; fill:var(--muted); opacity:0;
+    transform:translateY(5px); transition:opacity 280ms ease, transform 280ms ease; }
+  .hda-marker-label.base, .hda-marker-label.evolved,
+  .hda-small-label.base, .hda-small-label.evolved { opacity:1; transform:translateY(0); }
+  .hda-label-scaled { fill:var(--tts-ink); }
+  .hda-label-neutral { fill:var(--genuine-ink); }
+  .hda-seg-label { font-family:Georgia, "Times New Roman", serif; font-style:normal;
+    font-size:15px; font-weight:650; opacity:0; transition:opacity 260ms ease; }
+  .hda-formula-label { font-family:Georgia, "Times New Roman", serif; font-style:normal;
+    font-size:13px; font-weight:600; opacity:0; transition:opacity 260ms ease; }
+  .hda-seg-label.t { fill:var(--tts-ink); }
+  .hda-seg-label.g { fill:var(--genuine-ink); }
+  .hda-seg-label.a { fill:var(--artifact-ink); }
+  .hda-formula-label.t { fill:var(--tts-ink); }
+  .hda-formula-label.g { fill:var(--genuine-ink); }
+  .hda-formula-label.a { fill:var(--artifact-ink); }
+  .hda-svg.hda-show-scaled .hda-tick.scaled,
+  .hda-svg.hda-show-scaled .hda-label-scaled,
+  .hda-svg.hda-show-scaled .hda-desc-scaled,
+  .hda-svg.hda-show-neutral .hda-tick.neutral,
+  .hda-svg.hda-show-neutral .hda-label-neutral,
+  .hda-svg.hda-show-neutral .hda-desc-neutral { opacity:1; transform:translateY(0); }
+  .hda-svg.hda-show-t .hda-seg.t, .hda-svg.hda-show-t .hda-seg-label.t,
+  .hda-svg.hda-show-t .hda-formula-label.t,
+  .hda-svg.hda-show-a .hda-seg.a, .hda-svg.hda-show-a .hda-seg-label.a,
+  .hda-svg.hda-show-a .hda-formula-label.a,
+  .hda-svg.hda-show-g .hda-seg.g, .hda-svg.hda-show-g .hda-seg-label.g,
+  .hda-svg.hda-show-g .hda-formula-label.g { opacity:1; }
+  .hda-controls { display:flex; align-items:center; justify-content:center; gap:12px;
+    padding:12px 16px 14px; border-top:1px solid var(--rule); }
+  .hda-dots { display:flex; justify-content:center; gap:7px; padding:0; }
+  .hda-dot { width:9px; height:9px; padding:0; border:0; border-radius:999px; background:var(--rule-2);
+    cursor:pointer; transition:width 180ms ease, background 180ms ease; }
+  .hda-dot:hover, .hda-dot:focus-visible { outline:2px solid var(--accent-soft); outline-offset:4px; }
+  .hda-dot.active { width:28px; background:var(--accent); }
+  .hda-pause { display:inline-flex; align-items:center; justify-content:center; cursor:pointer;
+    border:1px solid var(--rule-2); background:var(--page); color:var(--text-2);
+    border-radius:999px; width:26px; height:26px; padding:0; flex:none; }
+  .hda-pause:hover, .hda-pause:focus-visible { border-color:var(--accent-soft); color:var(--accent);
+    outline:none; }
+  .hda-pause[aria-pressed="true"] { border-color:var(--accent-soft); color:var(--accent); }
+  .hda-pause svg { width:13px; height:13px; stroke:currentColor; stroke-width:2.2;
+    fill:none; stroke-linecap:round; stroke-linejoin:round; }
+  .hda-pause .icon-play { display:none; }
+  .hda-pause[aria-pressed="true"] .icon-pause { display:none; }
+  .hda-pause[aria-pressed="true"] .icon-play { display:block; }
+  @media (max-width:640px) {
+    .hda-stage { min-height:132px; }
+  }
+
+  /* ---------- "pending" placeholder for sections to be written ---------- */
+  .pending { border:1px dashed var(--rule-2); border-radius:10px; padding:18px 20px; margin:20px 0;
+    color:var(--muted); font-family:var(--font-head); font-size:14.5px; background:none; }
+  .pending .tag { display:inline-block; font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+    font-weight:700; color:var(--muted); border:1px solid var(--rule-2); border-radius:20px;
+    padding:2px 10px; margin-bottom:8px; }
+
+  hr.sec { border:none; border-top:1px solid var(--rule); margin:52px 0 0; }
+
+  footer { color:var(--muted); font-family:var(--font-head); font-size:12.5px;
+    padding:40px 0 80px; border-top:1px solid var(--rule); margin-top:56px; }
+  footer code { font-size:11.5px; }
+
+  @media (max-width:640px) {
+    h1 { font-size:31px; }
+    nav.toc ol { columns:1; }
+    .lede { font-size:18px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="nav-container">
+    <div class="nav-links">
+      <a href="../../index.html">Profile</a>
+      <a href="../index.html">Blog</a>
+    </div>
+  </div>
+</div>
+
+<!-- ============================== HEADER ============================== -->
+<header class="hero">
+  <div class="col">
+    <h1>What evolves when we talk about harness evolution?</h1>
+    <div class="tldr">
+      <div class="lab">TL;DR</div>
+      <p class="txt">Harness evolution can make benchmark scores rise — but the score does not always tell the whole story. We decompose each observed gain into three mechanisms with different generalization properties, and find that much of it comes from overfitting, or test-time scaling rather than generalizable improvement.</p>
+    </div>
+    <div class="byline">
+      <span class="author">Wenxuan Ding</span>
+      <span>Aug 6, 2026</span>
+      <span class="btns">
+        <a href="https://github.com/Wenwen-D/coEvolve">Code</a>
+      </span>
+    </div>
+  </div>
+</header>
+
+<!-- TOC — inline on narrow screens, fixed left rail on wide screens -->
+<div class="toc-wrap">
+  <nav class="toc" id="toc">
+    <div class="toc-label">Contents</div>
+    <ol>
+      <li><span class="n">1</span><a href="#motivation">Dissecting Gains from Harness Evolution</a></li>
+      <li><span class="n">2</span><a href="#experiments">Our Experiments</a></li>
+      <li class="sub"><a href="#hda">Harness-Delta Attribution: How Much Does Each Mechanism Contribute?</a></li>
+      <li class="sub"><a href="#benchmarks-and-experiment-setup">Benchmarks and Experiment Setup</a></li>
+      <li><span class="n">3</span><a href="#findings">Results</a></li>
+      <li class="sub"><a href="#results-hda">Most gains come from overfitting or test-time scaling</a></li>
+      <li class="sub"><a href="#results-transfer">Training gains often fail to transfer</a></li>
+      <li class="sub"><a href="#results-validation">Validation-based selection offers limited protection against overfitting</a></li>
+      <li><span class="n">4</span><a href="#implications">Looking Beyond</a></li>
+      <li><span class="n">§</span><a href="#citation">Citation</a></li>
+      <li><span class="n">§</span><a href="#references">References</a></li>
+      <li><span class="n">A</span><a href="appendix.html">Appendix (case studies)</a></li>
+    </ol>
+  </nav>
+</div>
+
+<main>
+
+<!-- ============================== 1 · MOTIVATION ============================== -->
+<section id="motivation">
+  <div class="col">
+    <h2>Section 1</h2>
+    <div class="h2-title">Dissecting Gains from Harness Evolution</div>
+
+    <!-- Figure 1: teaser scorecard, wired to per-model HDA data -->
+    <figure id="fig-1" class="wide scorecard-figure" style="margin-left:auto;margin-right:auto">
+      <div class="scorecard-top">
+        <div class="fig-head">Figure 1 · Where each reported gain comes from</div>
+        <div class="lg-chips" aria-label="Attribution legend">
+          <span class="chip"><span class="k" style="background:var(--artifact)">O</span>Overfitting</span>
+          <span class="chip"><span class="k" style="background:var(--tts)">T</span>Test-Time Scaling</span>
+          <span class="chip"><span class="k" style="background:var(--genuine)">G</span>Generalizable Improvement</span>
+        </div>
+      </div>
+      <div class="scorecard-canvas">
+        <div id="fig-scorecard" data-scorecard></div>
+      </div>
+    </figure>
+
+    <p>An agent system can be viewed as an LLM paired with a <em>harness</em>: the prompts, tools, memory, skills, orchestration code, and control flow that shape how a model interacts with a task.</p>
+
+    <p>Recent work<sup class="cite"><a href="#ref-1">[1]</a>, <a href="#ref-2">[2]</a>, <a href="#ref-3">[3]</a></sup> automates harness engineering through harness evolution, a form of text-space optimization that iteratively updates the non-parametric system around a fixed model using task feedback. In each iteration, an <em>executor</em> model attempts the tasks with the current harness. A <em>proposer</em> agent then inspects the trajectories and evaluation results to propose edits to the harness. Recent systems following this paradigm have reported intriguing gains from evolved harness code<sup class="cite"><a href="#ref-1">[1]</a></sup>, skill files<sup class="cite"><a href="#ref-4">[4]</a></sup>, and updated tool-use or orchestration patterns<sup class="cite"><a href="#ref-5">[5]</a></sup>.</p>
+
+    <p>However, a higher aggregate score does not reveal what changed in the system or whether the gains will persist beyond the search set (training split). The same score increase can hide different mechanisms:</p>
+    <div class="mechanism-strip" aria-label="Three mechanisms behind a score gain">
+      <div class="mechanism-card">
+        <span class="mechanism-head"><span class="mechanism-icon o"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11V8a5 5 0 0 1 10 0v3"/><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M12 15v2"/></svg></span><span class="title-text">Overfitting</span></span>
+        <p>e.g., hardcode a recurring answer pattern from the search set.</p>
+      </div>
+      <div class="mechanism-card">
+        <span class="mechanism-head"><span class="mechanism-icon t"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h8"/><path d="M6 12h12"/><path d="M6 16h8"/><path d="M18 8l3 4-3 4"/></svg></span><span class="title-text">Test-Time Scaling</span></span>
+        <p>e.g., sample five responses in parallel and take the majority answer.</p>
+      </div>
+      <div class="mechanism-card">
+        <span class="mechanism-head"><span class="mechanism-icon g"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17l5-5 4 4 7-8"/><path d="M15 8h5v5"/></svg></span><span class="title-text">Generalizable<br>Improvement</span></span>
+        <p>e.g., break tasks into reusable substeps or guard against common errors.</p>
+      </div>
+    </div>
+    <p><b>These mechanisms have different implications for cost and generalization</b>, even when they produce the same benchmark gain.</p>
+
+    <p>We therefore separate harness-evolution gains into three mechanisms: Overfitting, Test-Time Scaling, and Generalizable Improvement.</p>
+
+    <p>We define <b>Overfitting</b> as gains that rely on patterns specific to the optimization setting and therefore do not persist under an appropriate distribution shift. This includes exploiting dataset artifacts, or distilling task-specific knowledge from the proposer model. For example, a harness may string-match a recurring answer option if it is always correct when appears in the dataset. Similarly, on well-studied synthetic tasks, the proposer may write deterministic code tailored to the current setting without calling the executor LLM at all. <em>Such gains raise the search-split score without improving how the executor handles new tasks.</em> Among the three mechanisms, overfitting is therefore the most concerning and should be interpreted with the greatest caution.</p>
+
+    <p><b>Test-Time Scaling</b> sits in the middle ground. It happens when the evolved harness spend more inference compute through, for example, retries, verification, or parallel sampling<sup class="cite"><a href="#ref-6">[6]</a></sup>. The resulting gains may be matched by simply scaling the baseline to the same compute budget. While gains bought by extra compute may transfer to held-out tasks, whether they are worthwhile depends on the use case and the sensitivity to cost.</p>
+
+    <p>We define <b>Generalize Improvement</b> as gains that remain after accounting for overfitting and test-time scaling. These gains may come from reusable skills, better task decomposition, or methods that address common executor errors. They are most desirable because they are more likely to work on new tasks without using more compute.</p>
+
+    <p><a href="#fig-1">Figure 1</a> previews our main and most striking finding: across representative benchmarks in math, coding, creativity, and agentic tasks, most search split gains are explained by Overfitting or Test-Time Scaling; and the residual generalizable improvement is often small. The transferability of evolved harnesses to held-out test sets is even more limited, as shown in the <a href="#results-transfer">transfer analysis</a>.</p>
+
+    <p>In the following sections, we will explain how we attribute the gains with <b>Harness-Delta Attribution</b>, directly evaluate the generalizability on held-out tests, and show that preventing overfitting remains non-trivial even with validation gating. We further discuss how harness evolution interacts with the executor model&rsquo;s base capabilities and other task-specific details in the appendix.</p>
+  </div>
+  <div class="col"><hr class="sec"></div>
+</section>
+
+<!-- ============================== 2 · EXPERIMENTS ============================== -->
+<section id="experiments">
+  <div class="col">
+    <h2>Section 2</h2>
+    <div class="h2-title">Our Experiments</div>
+
+    <h3 id="hda">Harness-Delta Attribution: How Much Does Each Mechanism Contribute?</h3>
+    <p>We introduce <b>Harness-Delta Attribution (HDA)</b> (<a href="HDA_SKILL.md">method spec</a>), a procedure that decomposes the score difference between a baseline and an evolved harness and quantifies the contributions of overfitting, test-time scaling, and generalizable improvement.</p>
+
+    <figure class="hda-native" data-hda-figure>
+      <div class="fig-head">Figure 2 · Harness-Delta Attribution at a Glance</div>
+
+      <div class="hda-card">
+        <div class="hda-stage" aria-live="polite">
+          <div>
+            <p class="hda-stage-copy" data-hda-copy><span class="hda-step-num">1.</span> Compare the scores <span class="tex"><i>S</i>(<i>B</i>)</span> and <span class="tex"><i>S</i>(<i>E</i>)</span> to get the <span class="hda-focus">observed gain</span>.</p>
+          </div>
+        </div>
+
+        <div class="hda-canvas">
+          <svg class="hda-svg" data-hda-svg viewBox="0 0 960 330" role="img" aria-label="Animated number line for Harness-Delta Attribution">
+            <defs>
+              <marker id="hda-arrow-t" viewBox="0 0 12 12" refX="11.7" refY="6" markerWidth="2.7" markerHeight="2.7" orient="auto" markerUnits="strokeWidth">
+                <path d="M 1 1.5 L 10.5 6 L 1 10.5 z" fill="var(--tts)"/>
+              </marker>
+              <marker id="hda-arrow-a" viewBox="0 0 12 12" refX="11.7" refY="6" markerWidth="2.7" markerHeight="2.7" orient="auto" markerUnits="strokeWidth">
+                <path d="M 1 1.5 L 10.5 6 L 1 10.5 z" fill="var(--artifact)"/>
+              </marker>
+            </defs>
+
+            <line class="hda-axis" x1="110" y1="168" x2="850" y2="168"/>
+            <path class="hda-delta" d="M 110 112 C 260 70, 680 70, 850 112"/>
+            <text class="hda-delta-label" x="480" y="74" text-anchor="middle">observed gain: <tspan font-style="italic">S</tspan>(<tspan font-style="italic">E</tspan>) − <tspan font-style="italic">S</tspan>(<tspan font-style="italic">B</tspan>)</text>
+
+            <line class="hda-seg t" data-hda-seg="t" x1="110" y1="168" x2="300" y2="168" marker-end="url(#hda-arrow-t)"/>
+            <line class="hda-seg g" data-hda-seg="g" x1="300" y1="168" x2="655" y2="168"/>
+            <line class="hda-seg a" data-hda-seg="a" x1="850" y1="168" x2="655" y2="168" marker-end="url(#hda-arrow-a)"/>
+
+            <text class="hda-seg-label t" x="205" y="138" text-anchor="middle"><tspan font-style="italic">T</tspan> · Test-Time Scaling</text>
+            <text class="hda-seg-label g" x="478" y="138" text-anchor="middle"><tspan font-style="italic">G</tspan> · Generalizable Improvement</text>
+            <text class="hda-seg-label a" x="752" y="138" text-anchor="middle"><tspan font-style="italic">O</tspan> · Overfitting</text>
+
+            <text class="hda-formula-label t" x="205" y="207" text-anchor="middle"><tspan font-style="italic">T</tspan> = <tspan font-style="italic">S</tspan>(<tspan font-style="italic">B</tspan><tspan dy="4" dx="1" font-size="9.2" font-style="normal">cc</tspan><tspan dy="-4">)</tspan> − <tspan font-style="italic">S</tspan>(<tspan font-style="italic">B</tspan>)</text>
+            <text class="hda-formula-label g" x="478" y="207" text-anchor="middle"><tspan font-style="italic">G</tspan> = <tspan font-style="italic">S</tspan>(<tspan font-style="italic">E</tspan><tspan dy="4" dx="1" font-size="9.2" font-style="normal">neutral</tspan><tspan dy="-4">)</tspan> − <tspan font-style="italic">S</tspan>(<tspan font-style="italic">B</tspan><tspan dy="4" dx="1" font-size="9.2" font-style="normal">cc</tspan><tspan dy="-4">)</tspan></text>
+            <text class="hda-formula-label a" x="752" y="207" text-anchor="middle"><tspan font-style="italic">O</tspan> = <tspan font-style="italic">S</tspan>(<tspan font-style="italic">E</tspan>) − <tspan font-style="italic">S</tspan>(<tspan font-style="italic">E</tspan><tspan dy="4" dx="1" font-size="9.2" font-style="normal">neutral</tspan><tspan dy="-4">)</tspan></text>
+
+            <circle cx="110" cy="168" r="8" fill="var(--text-1)"/>
+            <circle cx="300" cy="168" r="8" fill="var(--tts)" class="hda-tick scaled"/>
+            <circle cx="655" cy="168" r="8" fill="var(--genuine)" class="hda-tick neutral"/>
+            <circle cx="850" cy="168" r="8" fill="var(--text-1)"/>
+
+            <line class="hda-tick base" x1="110" y1="140" x2="110" y2="188"/>
+            <line class="hda-tick scaled t" x1="300" y1="140" x2="300" y2="188"/>
+            <line class="hda-tick neutral g" x1="655" y1="140" x2="655" y2="188"/>
+            <line class="hda-tick evolved" x1="850" y1="140" x2="850" y2="188"/>
+
+            <text class="hda-marker-label base" x="110" y="232" text-anchor="middle">B</text>
+            <text class="hda-small-label base" x="110" y="253" text-anchor="middle">base harness</text>
+
+            <text class="hda-marker-label hda-label-scaled" x="300" y="232" text-anchor="middle" fill="var(--tts-ink)"><tspan font-style="italic">B</tspan><tspan dy="5.5" dx="1" font-size="12.5" font-style="normal">cc</tspan></text>
+            <text class="hda-small-label hda-desc-scaled" x="300" y="253" text-anchor="middle">B compute-matched to E</text>
+
+            <text class="hda-marker-label hda-label-neutral" x="655" y="232" text-anchor="middle" fill="var(--genuine-ink)"><tspan font-style="italic">E</tspan><tspan dy="5.5" dx="1" font-size="12.5" font-style="normal">neutral</tspan></text>
+            <text class="hda-small-label hda-desc-neutral" x="655" y="253" text-anchor="middle">E with overfitting neutralized</text>
+
+            <text class="hda-marker-label evolved" x="850" y="232" text-anchor="middle">E</text>
+            <text class="hda-small-label evolved" x="850" y="253" text-anchor="middle">evolved harness</text>
+          </svg>
+        </div>
+
+        <div class="hda-controls">
+          <button class="hda-pause" type="button" data-hda-pause aria-pressed="false" aria-label="Pause animation" title="Pause animation">
+            <svg class="icon-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14"/><path d="M16 5v14"/></svg>
+            <svg class="icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+          </button>
+          <div class="hda-dots" aria-label="Jump to animation step">
+            <button class="hda-dot active" type="button" aria-label="Step 1: observed delta"></button>
+            <button class="hda-dot" type="button" aria-label="Step 2: compute-match to isolate test-time scaling"></button>
+            <button class="hda-dot" type="button" aria-label="Step 3: neutralize shortcuts to isolate overfitting"></button>
+            <button class="hda-dot" type="button" aria-label="Step 4: read the residual as generalizable improvement"></button>
+          </div>
+        </div>
+      </div>
+    </figure>
+    <p>Let <span class="math">B</span> denote the baseline harness and <span class="math">E</span> the evolved harness. HDA evaluates two controlled variants: <span class="math">B<sub>cc</sub></span>, which matches the baseline to the evolved harness's inference budget, and <span class="math">E<sub>neutral</sub></span>, which neutralizes detected overfitting mechanisms in the evolved harness. Compute matching gives <span class="math">B</span> the same per-example budget of executor calls, tool calls, or samples as <span class="math">E</span>. Neutralization removes identified shortcuts, such as executor-bypass rules, hardcoded task knowledge, or recurring dataset artifacts, while preserving the rest of the evolved harness.</p>
+    <p>Let <span class="math">S(h)</span> denote the score of harness <span class="math">h</span>. We decompose the observed gain into three components:</p>
+    <div class="formula" aria-label="Harness-Delta Attribution equations">
+      <div class="eq-row">
+        <span class="lhs"><var>T</var></span>
+        <span class="rel">=</span>
+        <span class="rhs"><var>S</var>(<var>B</var><sub>cc</sub>) - <var>S</var>(<var>B</var>)</span>
+      </div>
+      <div class="eq-row">
+        <span class="lhs"><var>O</var></span>
+        <span class="rel">=</span>
+        <span class="rhs"><var>S</var>(<var>E</var>) - <var>S</var>(<var>E</var><sub>neutral</sub>)</span>
+      </div>
+      <div class="eq-row">
+        <span class="lhs"><var>G</var></span>
+        <span class="rel">=</span>
+        <span class="rhs"><var>S</var>(<var>E</var><sub>neutral</sub>) - <var>S</var>(<var>B</var><sub>cc</sub>)</span>
+      </div>
+    </div>
+    <p>Here, <span class="math">T</span> is the gain recovered by matching the inference budget, <span class="math">O</span> is the gain removed by neutralizing detected overfitting mechanisms, and <span class="math">G</span> is the remaining gain. By construction,</p>
+    <div class="formula formula-single" aria-label="Harness-Delta Attribution sum identity">
+      <div class="eq-row">
+        <span class="lhs"><var>O</var> + <var>T</var> + <var>G</var></span>
+        <span class="rel">=</span>
+        <span class="rhs"><var>S</var>(<var>E</var>) - <var>S</var>(<var>B</var>)</span>
+      </div>
+    </div>
+    <p>Note that the estimated contribution of overfitting is necessarily a <em>lower bound</em>, since some may appear as implicit or entangled. Correspondingly, the residual is an <em>upper-bound estimate</em> of generalizable improvement. Even with this conservative attribution, HDA can reveal when identifiable shortcuts or additional compute explain a large share of the reported gain. We also evaluate transfer on held-out tasks directly in the <a href="#results-transfer">transfer analysis</a>.</p>
+    <h3 id="benchmarks-and-experiment-setup">Benchmarks and Experiment Setup</h3>
+    <p>We evaluate harness evolution on representative benchmarks spanning <em>single-turn reasoning</em> (<span class="benchmark-name">LiveMath</span><sup class="cite"><a href="#ref-7">[7]</a></sup>, <span class="benchmark-name">CREATE</span><sup class="cite"><a href="#ref-8">[8]</a></sup>) and <em>long-horizon agentic tasks</em> (<span class="benchmark-name">ALFWorld</span><sup class="cite"><a href="#ref-9">[9]</a></sup>, <span class="benchmark-name">SWE-Bench Verified</span><sup class="cite"><a href="#ref-10">[10]</a></sup>), covering math, coding, planning, and creativity. We use <em>Claude Code (Opus 4.8)</em> as the proposer agent and evaluate various executor models with different sizes and capabilities, including Qwen-family models and Claude Haiku 4.5. The exact executor set varies by benchmark; see the <a href="appendix.html">appendix</a> for details.</p>
+    <p>We largely follow the evolution framework introduced by Meta-Harness<sup class="cite"><a href="#ref-1">[1]</a></sup>. Given an executor, the proposer iteratively revises the harness while keeping the executor weights fixed. Following Meta-Harness, candidate code, evaluation scores, execution traces, and proposer logs are written to a shared filesystem, which serves as the proposer&rsquo;s memory across iterations: the proposer can inspect prior artifacts, diagnose failures, and use them to propose the next set of harnesses.</p>
+    <p>We additionally add validation feedback as an intuitive attempt to encourage transfer. Training evaluations write detailed per-example results and full trajectories to the shared filesystem, while validation evaluations write only aggregate scores. We retain both the best training-selected and validation-selected harnesses and evaluate them after evolution on a held-out test set. The former lets us analyze what the usual search-set gain is made of, while the latter tests whether validation feedback improves transfer.</p>
+
+    <figure id="fig-3">
+      <div class="fig-head">Figure 3 · Evolution Loop and Split Usage</div>
+      <div class="flow-card is-img">
+          <img class="flow-img" src="fig3_keynote.png?v=2" alt="Harness evolution loop: the proposer writes candidate harnesses (1..k), which are evaluated on the train split (full trajectories, individual scores) and val split (aggregate scores only); results are written to a shared filesystem (candidate code, scores, traces, proposer logs) that feeds the proposer on the next of N iterations. After the loop, the best train- or val-selected harness is evaluated once on the held-out test split.">
+      </div>
+      <details class="flow-details">
+        <summary>
+          <span class="flow-summary-title">Pseudocode</span>
+          <span class="flow-toggle">pseudocode</span>
+        </summary>
+        <div class="loop-card">
+          <pre class="loop-code"><code><span class="kw">input:</span>  splits {<span class="tr">TRAIN</span>, <span class="vl">VAL</span>, <span class="ts">TEST</span>}, executor M, proposer P, iterations N
+<span class="kw">init:</span>   baseline B,  filesystem D &larr; &empty;   <span class="cm"># D stores code, scores, traces</span>
+
+D &larr; D &cup; {(B, <span class="fn">eval</span>(B, <span class="tr">TRAIN</span>), <span class="fn">eval</span>(B, <span class="vl">VAL</span>))}   <span class="cm"># seed-eval</span>
+
+<span class="kw">for</span> t = 1 &hellip; N:
+  P inspects filesystem D (prior harness code, scores, traces),
+    then proposes k new harnesses {H&#8321;, &hellip;, H&#8342;}
+
+  <span class="kw">for</span> H <span class="kw">in</span> {H&#8321;, &hellip;, H&#8342;}:
+    <span class="kw">if</span> H passes interface validation:
+      e_tr = <span class="fn">eval</span>(H, <span class="tr">TRAIN</span>)  <span class="cm"># on train set: full trajectories + per-example results</span>
+      e_vl = <span class="fn">eval</span>(H, <span class="vl">VAL</span>)    <span class="cm"># on val set: aggregate score only</span>
+      D &larr; D &cup; {(H, e_tr, e_vl)}       <span class="cm"># written to D, visible to P next round</span>
+
+H_train* = <span class="fn">argmax</span> train score <span class="kw">over</span> D    <span class="cm"># train-selected</span>
+H_val*   = <span class="fn">argmax</span> val score   <span class="kw">over</span> D    <span class="cm"># val-selected</span>
+
+<span class="kw">return</span> <span class="fn">eval</span>({B, H_train*, H_val*}, <span class="ts">TEST</span>)  <span class="cm"># held-out audit, never fed back</span></code></pre>
+        </div>
+      </details>
+    </figure>
+  </div>
+  <div class="col"><hr class="sec"></div>
+</section>
+
+<!-- ============================== 3 · FINDINGS ============================== -->
+<section id="findings">
+  <div class="col">
+    <h2>Section 3</h2>
+    <div class="h2-title">Results</div>
+
+    <h3 id="results-hda">Most gains come from overfitting or test-time scaling</h3>
+    <p>In many settings, a large share of the observed gain reflects overfitting or added test-time compute rather than a more capable executor. The mix varies: <span class="benchmark-name">ALFWorld</span> and <span class="benchmark-name">LiveMath</span> are dominated by overfitting, <span class="benchmark-name">CREATE</span> by test-time scaling, while <span class="benchmark-name">SWE-Bench Verified</span> shows the clearest residual improvement.</p>
+    <figure id="fig-overfit-examples">
+      <div class="fig-head">Figure 4 &middot; What Overfitting and Test-Time Scaling Look Like</div>
+      <div class="ocards">
+        <div class="ocard">
+          <div class="oc-head"><a class="oc-task" href="appendix.html#hx-observation_tracker_agent">ALFWorld</a><span class="oc-tag">O 98%</span></div>
+          <div class="oc-title">Hardcode the object layout, delete the model.</div>
+          <pre><code>LOCATION_PRIORS = <span class="art">{
+ 'apple':['fridge',
+   'countertop',...],
+ ... # 46 objects
+}</span>
+if 'heat'  in t: <span class="art">go('microwave')</span>
+if 'clean' in t: <span class="art">go('sinkbasin')</span>
+<span class="cm"># 0 LLM calls</span></code></pre>
+        </div>
+
+        <div class="ocard">
+          <div class="oc-head"><a class="oc-task" href="appendix.html#hx-generate_multi_prompt_vote_meta">LiveMath</a><span class="oc-tag">O 79%</span></div>
+          <div class="oc-title">Match one answer phrase, skip the math.</div>
+          <pre><code>MARKERS = <span class="art">[
+ "a stronger result
+   can be proven", ...
+]</span>
+for c in choices:
+ if <span class="art">any(m in c.text
+      for m in MARKERS)</span>:
+   <span class="art">return c.label</span>  <span class="cm"># 0 calls</span></code></pre>
+        </div>
+
+        <div class="ocard">
+          <div class="oc-head"><a class="oc-task" href="appendix.html#hx-wide_diverse_twenty">CREATE</a><span class="oc-tag" style="color:var(--tts-ink);background:color-mix(in srgb,var(--tts) 26%,transparent)">T 73%</span></div>
+          <div class="oc-title">Counter-case: buy compute, not a shortcut.</div>
+          <pre><code>for f in <span class="tts">TWENTY
+        _FRAMES</span>:
+ paths += llm(f)
+<span class="cm"># every path is a</span>
+<span class="cm"># real LLM call;</span>
+<span class="cm"># call-matched</span>
+<span class="cm"># baseline recovers</span>
+<span class="cm"># most of the gain</span></code></pre>
+        </div>
+
+        <div class="ocard">
+          <div class="oc-head"><a class="oc-task" href="appendix.html#hx-undefined_name_feedback">SWE-Bench</a><span class="oc-tag">O 15%</span></div>
+          <div class="oc-title">Bake in "fixes are only a few lines."</div>
+          <pre><code>ADD_T,DEL_T = <span class="art">12, 8</span>
+if adds&gt;=ADD_T or \
+   dels&gt;=DEL_T:
+ warn(<span class="art">"patch is
+  LARGE for a bug
+  fix"</span>) <span class="cm"># shrink</span></code></pre>
+        </div>
+      </div>
+      <figcaption>Examples of evolved harnesses exploiting task-specific shortcuts or using more inference compute across four benchmarks. Click a benchmark name to view the full harness.</figcaption>
+    </figure>
+
+    <p>In <span class="benchmark-name">ALFWorld</span>, evolution largely replaces the executor. All five models reach 100% training success, but HDA attributes 98% of the aggregate gain to overfitting. The smallest-model harnesses become rule-based controllers that make no LLM calls, while larger-model harnesses encode similar benchmark-specific knowledge through prompts, templates, and deterministic rules. <a class="case-link" href="appendix.html#alfworld">Appendix A1 &rarr;</a></p>
+    <p>In <span class="benchmark-name">LiveMath</span>, a dynamic multiple-choice benchmark for research-level mathematical reasoning<sup class="cite"><a href="#ref-7">[7]</a></sup>, evolution exploits a recurring dataset shortcut. The option &ldquo;a stronger result can be proven&rdquo; appears in 21 of 35 training questions and is always correct. HDA attributes 79% of the aggregate gain to this pattern. For example, the 0.8B harness improves from 5/35 to 27/35 correct, but 20 of the 22 added correct answers come from meta-option questions. <a class="case-link" href="appendix.html#livemath">Appendix A2 &rarr;</a></p>
+    <aside class="side-table" aria-label="CREATE call-matched baseline comparison">
+      <div class="side-title">CREATE call-matched comparison</div>
+      <table>
+        <thead><tr><th></th><th>Claude Haiku 4.5</th><th>Qwen3.6-35B-A3B</th></tr></thead>
+        <tbody>
+          <tr><td>B</td><td><span class="num">4.45</span></td><td><span class="num">4.39</span></td></tr>
+          <tr><td>B<sub>cc</sub></td><td><span class="num">23.14</span></td><td><span class="num best">18.74</span></td></tr>
+          <tr><td>E</td><td><span class="num best">42.33</span></td><td><span class="num">11.90</span></td></tr>
+        </tbody>
+      </table>
+      <div class="note-row">Scores are Creative Utility; higher is better. B<sub>cc</sub> is the call-matched baseline.</div>
+    </aside>
+    <p>In <span class="benchmark-name">CREATE</span>, an associative-creativity benchmark where each prompt can have many valid answers<sup class="cite"><a href="#ref-8">[8]</a></sup>, much of the gain comes from additional inference compute. A call-matched baseline recovers 49% of the gain for Claude Haiku 4.5 and for Qwen3.6-35B-A3B, it even outperforms the evolved harness. <a class="case-link" href="appendix.html#create">Appendix A3 &rarr;</a></p>
+    <p><span class="benchmark-name">SWE-Bench Verified</span>, grounded in real GitHub issues<sup class="cite"><a href="#ref-10">[10]</a></sup>, is where evolution produces the most faithful gains &mdash; but mainly for the weaker executors, which have the most headroom. The validation-selected Qwen3-4B-Instruct-2507 harness improves held-out test from 4% to 22% (HDA: 62% residual, 15% overfitting, 23% test-time scaling), and Qwen3-30B-A3B-Instruct-2507 is cleaner still &mdash; its train-selected harness lifts held-out test from 12% to 26% with almost no overfitting or added compute (O = 0%, T = 6%, G = 94%), and validation selection transfers further (12% to 36%).</p>
+    <p>The stronger executors barely improve on held-out test despite little measured overfitting or test-time scaling. Qwen3.6-27B rises from 77% to 85% on training but from 66% to 64% on test; Qwen3-Coder-30B-A3B-Instruct rises from 56% to 69% on training but its train-selected harness drops from 40% to 34% on test (validation selection recovers only part, to 44%). Here the proposer used honest scaffolding with no artifact to neutralize, yet the gain still does not transfer &mdash; a small overfitting/compute share is not the same as generalization; near the capability ceiling, the training gain is largely fit to the selection set. <a class="case-link" href="appendix.html#swebench">Appendix A4 &rarr;</a></p>
+
+    <h3 id="results-transfer">Training gains often fail to transfer</h3>
+    <p>We test generalizability directly on held-out test sets. As shown in Figure 5, test gains are substantially smaller than training gains across models and benchmarks in general. In 4 of the 16 settings, the train-selected harness even performs worse than the baseline on the held-out set. This confirms that large training gains often come from overfitting rather than generalizable improvement.</p>
+    <details class="panel">
+      <summary><span class="caret">&#9656;</span>Why does ALFWorld look like an exception?</summary>
+      <div class="panel-body">
+        <p><span class="benchmark-name">ALFWorld</span>&rsquo;s held-out gains are large and close to its training gains. However, these gains mainly come from overfitting to dataset artifacts and data leakage. On this well-studied and structured benchmark, the proposer appears to know all task types well and can write controllers that also work on unseen <span class="benchmark-name">ALFWorld</span> tasks. These results therefore provide weak evidence of generalizable improvement. On tasks that are truly unseen by the system, these controllers may fail under even small changes because they rely on string matching and fixed benchmark patterns.</p>
+      </div>
+    </details>
+    <figure class="wide" style="margin-left:auto;margin-right:auto">
+      <div class="fig-head">Figure 5 · Train gains often overstate held-out gains</div>
+      <div class="legend">
+        <span class="item"><span class="sw" style="background:var(--train)"></span>&Delta; train (train-selected)</span>
+        <span class="item"><span class="sw" style="background:var(--test)"></span>&Delta; held-out test <span style="color:var(--muted)">(red if below baseline)</span></span>
+      </div>
+      <div class="delta-modebar" data-train-test-delta-mode>
+        <span class="lab">Selected frontier</span>
+        <button type="button" data-mode="train" class="active">train-selected</button>
+        <button type="button" data-mode="val">val-selected</button>
+      </div>
+      <div id="fig-train-test-delta" data-train-test-delta data-mode="train"></div>
+      <figcaption>For each model, the grey bar is the train-selected harness&rsquo;s gain on the train set, and the coloured bar is the gain on the held-out test set (evolved harness &minus; baseline).</figcaption>
+    </figure>
+
+    <h3 id="results-validation">Validation-based selection offers limited protection against overfitting</h3>
+    <p>At each iteration, we give the proposer an aggregate validation score for each candidate harness to encourage more generalizable improvement. We then evaluate the harness with the highest validation score on the held-out test set.</p>
+    <p>Compared with the train-selected harness, the val-selected harness improves test performance by +8.0% (<span class="benchmark-name">ALFWorld</span>), +0.8% (<span class="benchmark-name">LiveMath</span>), +7.3% (<span class="benchmark-name">SWE-Bench Verified</span>), and &minus;0.4 CU (<span class="benchmark-name">CREATE</span>) on the four benchmarks. However, the gains remain 5.9%, 11.7%, 9.3%, and 9.3 CU (on <span class="benchmark-name">ALFWorld</span>, <span class="benchmark-name">LiveMath</span>, <span class="benchmark-name">SWE-Bench Verified</span>, and <span class="benchmark-name">CREATE</span>) below the corresponding training gains. Validation feedback therefore reduces overfitting, but avoiding overfitting in harness evolution remains non-trivial.</p>
+
+  </div>
+  <div class="col"><hr class="sec"></div>
+</section>
+
+<!-- ============================== 4 · IMPLICATIONS ============================== -->
+<section id="implications">
+  <div class="col">
+    <h2>Section 4</h2>
+    <div class="h2-title">Looking Beyond</div>
+    <p>Harness optimization may appear symmetric to updating model weights: both modify part of the agent system to improve overall performance. But they optimize very different things. Model weights shape the executor&rsquo;s capabilities, while a harness changes how those capabilities are used or supplemented through prompts, tools, control flow, and additional inference. This flexibility creates distinct evaluation challenges that an aggregate score alone cannot resolve.</p>
+    <p>Our analysis suggests several key takeaways for future research on harness evolution:</p>
+    <ul>
+      <li><b>Measure Overfitting and report held-out performance.</b> Performance on the search set alone does not show whether the gain will generalize to unseen tasks. When the same artifacts may appear across splits, stronger distribution shifts or stronger benchmarks are needed for fair method assessment.</li>
+      <li><b>Account for Test-Time Scaling.</b> Users need to understand the additional costs to interpret the utility in practice. When cost or latency matters, practitioners should also specify constraints on costs before evolution.</li>
+      <li><b>Choose benchmarks carefully for harness evolution research.</b> Observed gains may boil down to distilling the proposer's parametric knowledge of a well known benchmark. For example, an evolved overfitting-driven harness can perform well even on held-out tasks if the proposer already knows the benchmark beyond the training split. Such gains may not transfer to new tasks or unfamiliar benchmarks.</li>
+      <li><b>We need benchmarks that enable Generalizable Improvement.</b> Easy artifacts can short-circuit the search process, pushing any system toward overfitting and low-hanging gains. This can hide meaningful differences across proposers or evolution frameworks. To support the development of better harness evolution methods, we need rich, low-artifact benchmarks and meaningful distribution shifts that make transferable improvements easier to discover and reward.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================== CITATION ============================== -->
+<section id="citation">
+  <div class="col">
+    <h2>Cite</h2>
+    <div class="h2-title">Citation</div>
+    <p class="section-sub">Please cite this work as:</p>
+    <blockquote class="cite-as">Ding, Wenxuan. &ldquo;What Evolves When We Talk About Harness Evolution?&rdquo; <em>Blog post</em>, 2026. https://wenwen-d.github.io/blog/harness-delta-attribution/</blockquote>
+    <p>Or use the BibTeX citation:</p>
+    <div class="bibtex-wrap">
+      <button type="button" class="copy-btn" data-copy-bibtex>Copy</button>
+      <pre class="bibtex"><code>@article{ding2026harnessdelta,
+  title = {What Evolves When We Talk About Harness Evolution?},
+  author = {Ding, Wenxuan},
+  journal = {wenwen-d.github.io},
+  year = {2026},
+  month = {August},
+  url = "https://wenwen-d.github.io/blog/harness-delta-attribution/"
+}</code></pre>
+    </div>
+  </div>
+  <div class="col"><hr class="sec"></div>
+</section>
+
+<!-- ============================== REFERENCES ============================== -->
+<section id="references">
+  <div class="col">
+    <h2>Bibliography</h2>
+    <div class="h2-title">References</div>
+    <ol class="refs">
+      <li id="ref-1"><span class="authors">Yoonho Lee, Roshen Nair, Qizheng Zhang, Kangwook Lee, Omar Khattab, and Chelsea Finn.</span> <b>Meta-Harness: End-to-End Optimization of Model Harnesses.</b> <span class="venue">arXiv preprint</span>, 2026.<br>
+        <a href="https://arxiv.org/abs/2603.28052" target="_blank" rel="noopener">arXiv:2603.28052</a></li>
+      <li id="ref-2"><span class="authors">Jiahang Lin, Shichun Liu, Chengjun Pan, Lizhi Lin, Shihan Dou, Zhiheng Xi, Xuanjing Huang, Hang Yan, Zhenhua Han, Tao Gui, et al.</span> <b>Agentic Harness Engineering: Observability-Driven Automatic Evolution of Coding-Agent Harnesses.</b> <span class="venue">arXiv preprint</span>, 2026.<br>
+        <a href="https://arxiv.org/abs/2604.25850" target="_blank" rel="noopener">arXiv:2604.25850</a></li>
+      <li id="ref-3"><span class="authors">Minhua Lin, Juncheng Wu, Zijun Wang, Zhan Shi, Yisi Sang, Bing He, Zewen Liu, Tianxin Wei, Zongyu Wu, Zhiwei Zhang, et al.</span> <b>Harness Updating Is Not Harness Benefit: Disentangling Evolution Capabilities in Self-Evolving LLM Agents.</b> <span class="venue">arXiv preprint</span>, 2026.<br>
+        <a href="https://arxiv.org/abs/2605.30621" target="_blank" rel="noopener">arXiv:2605.30621</a></li>
+      <li id="ref-4"><span class="authors">Yifan Yang, Ziyang Gong, Weiquan Huang, Qihao Yang, Ziwei Zhou, Zisu Huang, Yan Li, Xuemei Gao, Qi Dai, Bei Liu, et al.</span> <b>SkillOpt: Executive Strategy for Self-Evolving Agent Skills.</b> <span class="venue">arXiv preprint</span>, 2026.<br>
+        <a href="https://arxiv.org/abs/2605.23904" target="_blank" rel="noopener">arXiv:2605.23904</a></li>
+      <li id="ref-5"><span class="authors">Tingyang Chen, Shuo Lu, Kang Zhao, Weicheng Meng, Hanlin Teng, Tianhao Li, Chao Li, Xule Liu, Jian Liang, Zhizhong Zhang, et al.</span> <b>HarnessX: A Composable, Adaptive, and Evolvable Agent Harness Foundry.</b> <span class="venue">arXiv preprint</span>, 2026.<br>
+        <a href="https://arxiv.org/abs/2606.14249" target="_blank" rel="noopener">arXiv:2606.14249</a></li>
+      <li id="ref-6"><span class="authors">Yike Wang, Huaisheng Zhu, Zhengyu Hu, Yige Yuan, Zhengyu Chen, Shakti Senthil, Hannaneh Hajishirzi, Yulia Tsvetkov, Pradeep Dasigi, and Teng Xiao.</span> <b>Rethinking the Evaluation of Harness Evolution for Agents.</b> <span class="venue">arXiv preprint</span>, 2026.<br>
+        <a href="https://arxiv.org/abs/2607.12227" target="_blank" rel="noopener">arXiv:2607.12227</a></li>
+      <li id="ref-7"><span class="authors">Linyang He, Qiyao Yu, Hanze Dong, Baohao Liao, Xinxing Xu, Micah Goldblum, Jiang Bian, and Nima Mesgarani.</span> <b>LiveMathematicianBench: A Live Benchmark for Mathematician-Level Reasoning with Proof Sketches.</b> <span class="venue">arXiv preprint</span>, 2026.<br>
+        <a href="https://arxiv.org/abs/2604.01754" target="_blank" rel="noopener">arXiv:2604.01754</a></li>
+      <li id="ref-8"><span class="authors">Manya Wadhwa, Tiasa Singha Roy, Harvey Lederman, Junyi Jessy Li, and Greg Durrett.</span> <b>CREATE: Testing LLMs for Associative Creativity.</b> <span class="venue">arXiv preprint</span>, 2026.<br>
+        <a href="https://arxiv.org/abs/2603.09970" target="_blank" rel="noopener">arXiv:2603.09970</a></li>
+      <li id="ref-9"><span class="authors">Mohit Shridhar, Xingdi Yuan, Marc-Alexandre Côté, Yonatan Bisk, Adam Trischler, and Matthew Hausknecht.</span> <b>ALFWorld: Aligning Text and Embodied Environments for Interactive Learning.</b> <span class="venue">OpenReview</span>.<br>
+        <a href="https://openreview.net/forum?id=0IOX0YcCdTn" target="_blank" rel="noopener">openreview.net/forum?id=0IOX0YcCdTn</a></li>
+      <li id="ref-10"><span class="authors">Carlos E. Jimenez, John Yang, Alexander Wettig, Shunyu Yao, Kexin Pei, Ofir Press, and Karthik R. Narasimhan.</span> <b>SWE-bench: Can Language Models Resolve Real-world Github Issues?</b> <span class="venue">The Twelfth International Conference on Learning Representations</span>, 2024.<br>
+        <a href="https://openreview.net/forum?id=VTF8yNQM66" target="_blank" rel="noopener">openreview.net/forum?id=VTF8yNQM66</a></li>
+    </ol>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="col"></div>
+</footer>
+
+<script src="blog_data.js?v=17"></script>
+<script src="blog_charts.js?v=17"></script>
+<script>
+(() => {
+  const root = document.querySelector("[data-hda-figure]");
+  if (!root) return;
+
+  const svg = root.querySelector("[data-hda-svg]");
+  const copy = root.querySelector("[data-hda-copy]");
+  const dots = Array.from(root.querySelectorAll(".hda-dot"));
+  const segs = Array.from(root.querySelectorAll("[data-hda-seg]"));
+  const pauseBtn = root.querySelector("[data-hda-pause]");
+
+  const stages = [
+    {
+      classes: [],
+      copy: "<span class=\"hda-step-num\">1.</span> Compare the scores <span class=\"tex\"><i>S</i>(<i>B</i>)</span> and <span class=\"tex\"><i>S</i>(<i>E</i>)</span> to get the <span class=\"hda-focus\">observed gain</span>."
+    },
+    {
+      classes: ["hda-show-scaled", "hda-show-t"],
+      copy: "<span class=\"hda-step-num\">2.</span> Run <span class=\"math\">B</span> with the same compute budget used by <span class=\"math\">E</span> to get <span class=\"tex\"><i>B</i><sub>cc</sub></span>; the gain <span class=\"tex\"><i>S</i>(<i>B</i><sub>cc</sub>) − <i>S</i>(<i>B</i>)</span> measures <span class=\"hda-focus\">Test-Time Scaling</span>."
+    },
+    {
+      classes: ["hda-show-scaled", "hda-show-t", "hda-show-neutral", "hda-show-a"],
+      copy: "<span class=\"hda-step-num\">3.</span> Remove detected shortcuts from <span class=\"math\">E</span> to get <span class=\"tex\"><i>E</i><sub>neutral</sub></span>; the drop <span class=\"tex\"><i>S</i>(<i>E</i>) − <i>S</i>(<i>E</i><sub>neutral</sub>)</span> measures <span class=\"hda-focus\">Overfitting</span>."
+    },
+    {
+      classes: ["hda-show-scaled", "hda-show-t", "hda-show-neutral", "hda-show-a", "hda-show-g"],
+      copy: "<span class=\"hda-step-num\">4.</span> The remaining gap <span class=\"tex\"><i>S</i>(<i>E</i><sub>neutral</sub>) − <i>S</i>(<i>B</i><sub>cc</sub>)</span> estimates <span class=\"hda-focus\">Generalizable Improvement</span>."
+    }
+  ];
+
+  let idx = 0;
+  let timer = null;
+  let paused = false;
+
+  function syncSegments() {
+    segs.forEach((line) => {
+      const len = line.getTotalLength();
+      const key = line.dataset.hdaSeg;
+      line.style.strokeDasharray = len;
+      line.style.strokeDashoffset = svg.classList.contains(`hda-show-${key}`) ? 0 : len;
+    });
+  }
+
+  function setStage(nextIdx) {
+    idx = nextIdx;
+    svg.setAttribute("class", ["hda-svg", ...stages[idx].classes].join(" "));
+    copy.innerHTML = stages[idx].copy;
+    dots.forEach((dot, i) => dot.classList.toggle("active", i === idx));
+    syncSegments();
+  }
+
+  function schedule() {
+    clearTimeout(timer);
+    if (paused) return;
+    timer = setTimeout(() => {
+      setStage((idx + 1) % stages.length);
+      schedule();
+    }, idx === 0 ? 1800 : 2400);
+  }
+
+  function syncPause() {
+    if (!pauseBtn) return;
+    pauseBtn.setAttribute("aria-pressed", paused ? "true" : "false");
+    pauseBtn.setAttribute("aria-label", paused ? "Resume animation" : "Pause animation");
+    pauseBtn.setAttribute("title", paused ? "Resume animation" : "Pause animation");
+  }
+
+  function start() {
+    setStage(0);
+    schedule();
+  }
+
+  dots.forEach((dot, i) => {
+    dot.addEventListener("click", () => {
+      clearTimeout(timer);
+      setStage(i);
+      schedule();
+    });
+  });
+
+  if (pauseBtn) {
+    pauseBtn.addEventListener("click", () => {
+      paused = !paused;
+      syncPause();
+      schedule();
+    });
+  }
+
+  syncPause();
+  start();
+})();
+</script>
+<script>
+/* BibTeX copy-to-clipboard */
+(() => {
+  const btn = document.querySelector("[data-copy-bibtex]");
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    const code = btn.parentNode.querySelector("pre.bibtex code");
+    if (!code) return;
+    navigator.clipboard.writeText(code.textContent).then(() => {
+      const prev = btn.textContent;
+      btn.textContent = "Copied";
+      setTimeout(() => { btn.textContent = prev; }, 1500);
+    });
+  });
+})();
+</script>
+
+<button id="to-top" aria-label="Back to top" title="Back to top">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V6M6 11l6-6 6 6"/></svg>
+</button>
+<script>
+/* back-to-top: appears after scrolling past ~1.5 viewports */
+(() => {
+  const btn = document.getElementById("to-top");
+  if (!btn) return;
+  const onScroll = () => btn.classList.toggle("show", window.scrollY > innerHeight * 1.2);
+  addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+  btn.addEventListener("click", () => scrollTo({ top: 0, behavior: "smooth" }));
+})();
+</script>
+</body>
+</html>
