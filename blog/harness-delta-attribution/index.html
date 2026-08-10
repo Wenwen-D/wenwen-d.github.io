@@ -148,12 +148,12 @@
   h1 { font-family:var(--font-head); font-size:38px; line-height:1.12;
     letter-spacing:-0.025em; font-weight:730; margin:6px 0 18px; }
   .lede { font-size:19.5px; line-height:1.5; color:var(--text-2); margin:0 0 26px; max-width:660px; }
-  .byline { display:flex; flex-wrap:wrap; align-items:center; gap:8px 16px;
-    font-family:var(--font-head); font-size:15px; color:var(--muted);
+  .byline { font-family:var(--font-head); color:var(--muted);
     border-top:1px solid var(--rule); border-bottom:1px solid var(--rule); padding:14px 0; }
-  .byline b { color:var(--text-2); font-weight:600; }
-  .byline .author { color:var(--text-1); font-weight:400; }
-  .byline .btns { display:flex; gap:8px; margin-left:auto; }
+  .byline .authors { color:var(--text-2); font-weight:500; font-size:15.5px; line-height:1.5; }
+  .byline .authors sup { font-size:.7em; font-weight:600; color:var(--muted); }
+  .byline .affil { font-size:12.5px; color:var(--muted); margin:6px 0 0; }
+  .byline .affil sup { font-size:.85em; }
   .byline .btns a { font-weight:600; font-size:12.5px; color:var(--accent);
     border:1px solid var(--accent-soft); border-radius:8px; padding:6px 13px; }
   .byline .btns a:hover { text-decoration:none; background:var(--accent-soft); }
@@ -226,6 +226,11 @@
     text-transform:uppercase; font-weight:700; color:var(--accent); width:52px; text-align:right; padding-top:3px; }
   .tldr .txt { font-size:15px; line-height:1.55; color:var(--text-2); margin:0;
     border-left:3px solid var(--accent-soft); padding-left:18px; font-weight:400; }
+  .tldr .code-btn { display:inline-flex; align-items:center; gap:4px; margin-left:6px;
+    font-family:var(--font-head); font-size:12.5px; font-weight:600; color:var(--accent);
+    text-decoration:none; border:1px solid var(--accent-soft); border-radius:7px; padding:2px 10px;
+    white-space:nowrap; transition:background .12s, border-color .12s; }
+  .tldr .code-btn:hover { text-decoration:none; background:var(--accent-soft); border-color:var(--accent); }
   @media (max-width:640px) {
     .tldr { gap:12px; }
     .tldr .lab { width:auto; text-align:left; }
@@ -651,14 +656,11 @@
     <h1>What Evolves When We Talk About Harness Evolution?</h1>
     <div class="tldr">
       <div class="lab">TL;DR</div>
-      <p class="txt">Harness evolution can make benchmark scores rise, but the score does not always tell the whole story. We decompose each observed gain into three mechanisms with different generalization properties, and find that much of it comes from overfitting or test-time scaling rather than generalizable improvement.</p>
+      <p class="txt">Harness evolution can make benchmark scores rise, but the score does not always tell the whole story. We decompose each observed gain into three mechanisms with different generalization properties, and find that much of it comes from overfitting or test-time scaling rather than generalizable improvement. <a class="code-btn" href="https://github.com/Wenwen-D/HarnessDeltaAttribution">Code &amp; Data →</a></p>
     </div>
     <div class="byline">
-      <span class="author">Wenxuan Ding</span>
-      <span>Aug 6, 2026</span>
-      <span class="btns">
-        <a href="https://github.com/Wenwen-D/HarnessDeltaAttribution">Code</a>
-      </span>
+      <div class="authors">Wenxuan Ding<sup>1,2</sup>, Qin Lu<sup>1</sup>, Changlong Yu<sup>1</sup>, Sha Li<sup>1</sup>, Shuowei Jin<sup>1</sup>, Xin Liu<sup>1</sup>, Greg Durrett<sup>2</sup></div>
+      <div class="affil"><sup>1</sup> Amazon &nbsp;·&nbsp; <sup>2</sup> New York University &nbsp;·&nbsp; Aug 6, 2026</div>
     </div>
   </div>
 </header>
