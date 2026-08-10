@@ -3,8 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>What Evolves When We Talk about Harness Evolution</title>
-<meta name="description" content="Harness evolution makes benchmark scores rise, but the score is not the whole story. We decompose reported gains into artifact, test-time scaling, and genuine improvement.">
+<title>What Evolves When We Talk About Harness Evolution?</title>
+<link href="../../images/wenwen.jpg" rel="shortcut icon" type="image/jpg"/>
+<meta name="description" content="Harness-Delta Attribution (HDA): a method that decomposes the benchmark gains from agent harness evolution into overfitting, test-time scaling, and generalizable improvement — showing how much of the gain actually transfers.">
+<link rel="canonical" href="https://wenwen-d.github.io/blog/harness-delta-attribution/">
+<!-- Open Graph (Facebook / LinkedIn / Slack / iMessage previews) -->
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Wenxuan Ding">
+<meta property="og:title" content="Harness-Delta Attribution: What Evolves When We Talk About Harness Evolution?">
+<meta property="og:description" content="A method that decomposes the benchmark gains from agent harness evolution into overfitting, test-time scaling, and generalizable improvement — showing how much of the gain actually transfers.">
+<meta property="og:url" content="https://wenwen-d.github.io/blog/harness-delta-attribution/">
+<meta property="og:image" content="https://wenwen-d.github.io/blog/harness-delta-attribution/hda_fig2.png">
+<!-- Twitter card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Harness-Delta Attribution: What Evolves When We Talk About Harness Evolution?">
+<meta name="twitter:description" content="Decomposing agent harness-evolution gains into overfitting, test-time scaling, and generalizable improvement.">
+<meta name="twitter:image" content="https://wenwen-d.github.io/blog/harness-delta-attribution/hda_fig2.png">
 <style>
   /* =========================================================================
      DESIGN SYSTEM — Candidate B (clean technical blog).
@@ -45,8 +59,7 @@
     --maxw:780px;        /* reading column */
     --maxw-wide:1040px;  /* figures may break out to here */
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
+  :root.dark {
       --page:#0f1113;
       --text-1:#f0f2f4; --text-2:#c3c8cf; --muted:#8b9099;
       --rule:#23262b; --rule-2:#2e323a; --track:#3a3f47;
@@ -58,7 +71,6 @@
       --train:#6b7480;
       --test:#6ea0ff;
       --neg:#E87862;
-    }
   }
 
   * { box-sizing:border-box; }
@@ -77,6 +89,13 @@
   .topbar .nav-links a { font-family:var(--font-head); font-size:14px; font-weight:600;
     margin-left:22px; color:var(--text-2); text-decoration:none; transition:color .15s; }
   .topbar .nav-links a:hover { color:var(--accent); text-decoration:none; }
+  .topbar .theme-toggle { background:none; border:none; cursor:pointer; margin-left:22px;
+    color:var(--text-2); display:inline-flex; align-items:center; justify-content:center;
+    padding:0; transition:transform .2s ease, color .2s ease; }
+  .topbar .theme-toggle:hover { transform:scale(1.1); color:var(--accent); }
+  .topbar .theme-toggle .moon-icon { display:none; }
+  :root.dark .topbar .theme-toggle .sun-icon { display:none; }
+  :root.dark .topbar .theme-toggle .moon-icon { display:inline; }
   body { padding-top:48px; }
 
   .col { max-width:var(--maxw); margin:0 auto; padding:0 24px; }
@@ -117,11 +136,9 @@
     background:color-mix(in srgb, var(--accent) 9%, var(--page));
     border:1px solid color-mix(in srgb, var(--accent) 22%, transparent);
     border-radius:5px; padding:1px 6px; }
-  @media (prefers-color-scheme:dark){
-    .benchmark-name { color:var(--accent);
-      background:color-mix(in srgb, var(--accent) 16%, var(--page));
-      border-color:color-mix(in srgb, var(--accent) 34%, transparent); }
-  }
+  :root.dark .benchmark-name { color:var(--accent);
+    background:color-mix(in srgb, var(--accent) 16%, var(--page));
+    border-color:color-mix(in srgb, var(--accent) 34%, transparent); }
   /* ---------- header ---------- */
   header.hero { padding:64px 0 8px; }
   .eyebrow { font-family:var(--font-head); font-size:12px; letter-spacing:.13em;
@@ -489,11 +506,9 @@
   .flow-svg { display:block; width:100%; height:auto; overflow:visible; }
   .flow-img { display:block; width:100%; height:auto; border:0 !important; border-radius:0; }
   .flow-card.is-img{ border:0; padding:0; background:transparent; }
-  @media (prefers-color-scheme:dark){
-    /* the Figure 3 image is a transparent PNG with dark ink; back it with white so it stays legible */
-    .flow-card.is-img{ background:#fff; padding:14px; border-radius:10px; }
-    .flow-img{ border-radius:6px; }
-  }
+  /* the Figure 3 image is a transparent PNG with dark ink; back it with white so it stays legible */
+  :root.dark .flow-card.is-img{ background:#fff; padding:14px; border-radius:10px; }
+  :root.dark .flow-img{ border-radius:6px; }
   .flow-box { fill:var(--card); stroke:var(--rule-2); stroke-width:1.2; }
   .flow-box.fs { fill:var(--page); stroke:var(--accent-soft); }
   .flow-box.train { stroke:var(--artifact); fill:color-mix(in srgb, var(--artifact) 10%, var(--page)); }
@@ -620,22 +635,26 @@
       <a href="../../index.html">Profile</a>
       <a href="../index.html">Blog</a>
     </div>
+    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
+      <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+      <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 0 1 11.21 3a7 7 0 1 0 9.79 9.79z"></path></svg>
+    </button>
   </div>
 </div>
 
 <!-- ============================== HEADER ============================== -->
 <header class="hero">
   <div class="col">
-    <h1>What evolves when we talk about harness evolution?</h1>
+    <h1>What Evolves When We Talk About Harness Evolution?</h1>
     <div class="tldr">
       <div class="lab">TL;DR</div>
-      <p class="txt">Harness evolution can make benchmark scores rise — but the score does not always tell the whole story. We decompose each observed gain into three mechanisms with different generalization properties, and find that much of it comes from overfitting, or test-time scaling rather than generalizable improvement.</p>
+      <p class="txt">Harness evolution can make benchmark scores rise, but the score does not always tell the whole story. We decompose each observed gain into three mechanisms with different generalization properties, and find that much of it comes from overfitting or test-time scaling rather than generalizable improvement.</p>
     </div>
     <div class="byline">
       <span class="author">Wenxuan Ding</span>
       <span>Aug 6, 2026</span>
       <span class="btns">
-        <a href="https://github.com/Wenwen-D/coEvolve">Code</a>
+        <a href="https://github.com/Wenwen-D/HarnessDeltaAttribution">Code</a>
       </span>
     </div>
   </div>
@@ -728,7 +747,7 @@
     <div class="h2-title">Our Experiments</div>
 
     <h3 id="hda">Harness-Delta Attribution: How Much Does Each Mechanism Contribute?</h3>
-    <p>We introduce <b>Harness-Delta Attribution (HDA)</b> (<a href="HDA_SKILL.md">method spec</a>), a procedure that decomposes the score difference between a baseline and an evolved harness and quantifies the contributions of overfitting, test-time scaling, and generalizable improvement.</p>
+    <p>We introduce <b>Harness-Delta Attribution (HDA)</b> (<a href="https://github.com/Wenwen-D/HarnessDeltaAttribution/blob/main/src/hda/HDA_SKILL.md" target="_blank" rel="noopener">method spec</a>), a procedure that decomposes the score difference between a baseline and an evolved harness and quantifies the contributions of overfitting, test-time scaling, and generalizable improvement.</p>
 
     <figure class="hda-native" data-hda-figure>
       <div class="fig-head">Figure 2 · Harness-Delta Attribution at a Glance</div>
@@ -999,7 +1018,7 @@ if adds&gt;=ADD_T or \
       <li><b>Measure Overfitting and report held-out performance.</b> Performance on the search set alone does not show whether the gain will generalize to unseen tasks. When the same artifacts may appear across splits, stronger distribution shifts or stronger benchmarks are needed for fair method assessment.</li>
       <li><b>Account for Test-Time Scaling.</b> Users need to understand the additional costs to interpret the utility in practice. When cost or latency matters, practitioners should also specify constraints on costs before evolution.</li>
       <li><b>Choose benchmarks carefully for harness evolution research.</b> Observed gains may boil down to distilling the proposer's parametric knowledge of a well known benchmark. For example, an evolved overfitting-driven harness can perform well even on held-out tasks if the proposer already knows the benchmark beyond the training split. Such gains may not transfer to new tasks or unfamiliar benchmarks.</li>
-      <li><b>We need benchmarks that enable Generalizable Improvement.</b> Easy artifacts can short-circuit the search process, pushing any system toward overfitting and low-hanging gains. This can hide meaningful differences across proposers or evolution frameworks. To support the development of better harness evolution methods, we need rich, low-artifact benchmarks and meaningful distribution shifts that make transferable improvements easier to discover and reward.</li>
+      <li><b>We need benchmarks that select for Generalizable Improvement.</b> Easy artifacts can short-circuit the search process, pushing any system toward overfitting and low-hanging gains. This can hide meaningful differences across proposers or evolution frameworks. To support the development of better harness evolution methods, we need rich, low-artifact benchmarks and meaningful distribution shifts that make transferable improvements easier to discover and reward.</li>
     </ul>
   </div>
 </section>
@@ -1063,6 +1082,18 @@ if adds&gt;=ADD_T or \
   <div class="col"></div>
 </footer>
 
+<script>
+  /* theme toggle — shares localStorage key "theme" with the personal site */
+  (() => {
+    const root = document.documentElement;
+    if (localStorage.getItem("theme") === "dark") root.classList.add("dark");
+    const t = document.getElementById("theme-toggle");
+    if (t) t.addEventListener("click", () => {
+      root.classList.toggle("dark");
+      localStorage.setItem("theme", root.classList.contains("dark") ? "dark" : "light");
+    });
+  })();
+</script>
 <script src="blog_data.js?v=17"></script>
 <script src="blog_charts.js?v=17"></script>
 <script>

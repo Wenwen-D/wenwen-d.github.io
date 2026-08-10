@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://wenwen-d.github.io/sitemap.xml

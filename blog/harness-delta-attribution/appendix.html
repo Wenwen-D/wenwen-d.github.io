@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Appendix — What Evolves When We Talk about Harness Evolution</title>
+<link href="../../images/wenwen.jpg" rel="shortcut icon" type="image/jpg"/>
 <style>
   /* Appendix reuses the main blog's design system. If we later split the CSS
      into a shared blog.css, both files link it; for now it is duplicated so
@@ -18,13 +19,11 @@
     --genuine:#49A575; --genuine-ink:#2E7A54; --tts:#EDB646; --tts-ink:#9A6F1E; --artifact:#E16652; --artifact-ink:#B8442F;
     --maxw:720px; --maxw-wide:960px;
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
+  :root.dark {
       --page:#0f1113; --text-1:#f0f2f4; --text-2:#c3c8cf; --muted:#8b9099;
       --rule:#23262b; --rule-2:#2e323a; --track:#3a3f47; --card:#16191d; --card-rule:#262a30; --code-bg:#1b1f24;
       --accent:#6ea0ff; --accent-soft:#2b3550;
       --genuine:#57B884; --genuine-ink:#72C99A; --tts:#EDC069; --tts-ink:#F0CE8A; --artifact:#E87862; --artifact-ink:#F09383;
-    }
   }
   * { box-sizing:border-box; }
   html { scroll-behavior:smooth; }
@@ -37,6 +36,13 @@
   .topbar .nav-links a { font-family:var(--font-head); font-size:14px; font-weight:600;
     margin-left:22px; color:var(--text-2); text-decoration:none; transition:color .15s; }
   .topbar .nav-links a:hover { color:var(--accent); text-decoration:none; }
+  .topbar .theme-toggle { background:none; border:none; cursor:pointer; margin-left:22px;
+    color:var(--text-2); display:inline-flex; align-items:center; justify-content:center;
+    padding:0; transition:transform .2s ease, color .2s ease; }
+  .topbar .theme-toggle:hover { transform:scale(1.1); color:var(--accent); }
+  .topbar .theme-toggle .moon-icon { display:none; }
+  :root.dark .topbar .theme-toggle .sun-icon { display:none; }
+  :root.dark .topbar .theme-toggle .moon-icon { display:inline; }
   body { padding-top:48px; }
   .col { max-width:var(--maxw); margin:0 auto; padding:0 24px; }
   .wide { max-width:var(--maxw-wide); }
@@ -141,6 +147,10 @@
       <a href="../../index.html">Profile</a>
       <a href="../index.html">Blog</a>
     </div>
+    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
+      <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+      <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 0 1 11.21 3a7 7 0 1 0 9.79 9.79z"></path></svg>
+    </button>
   </div>
 </div>
 
@@ -762,6 +772,18 @@ response = <span class="tts">self.llm_call(self.messages, max_tokens=16384)</spa
   <div class="col"></div>
 </footer>
 
+<script>
+  /* theme toggle — shares localStorage key "theme" with the personal site */
+  (() => {
+    const root = document.documentElement;
+    if (localStorage.getItem("theme") === "dark") root.classList.add("dark");
+    const t = document.getElementById("theme-toggle");
+    if (t) t.addEventListener("click", () => {
+      root.classList.toggle("dark");
+      localStorage.setItem("theme", root.classList.contains("dark") ? "dark" : "light");
+    });
+  })();
+</script>
 <script src="blog_data.js?v=17"></script>
 <script src="blog_charts.js?v=17"></script>
 <script>
