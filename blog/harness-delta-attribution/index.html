@@ -173,8 +173,9 @@
 
   /* ---------- table of contents ----------
      Narrow screens: inline block below the header (centered like .col).
-     Wide screens (≥1200px): fixed left rail anchored a constant gap to the
-     left of the centered reading column, so it never drifts or overlaps. */
+     Wide screens: left-margin rail anchored to the viewport center (calc),
+     so it hugs the centered content and tracks it — instead of the viewport
+     edge — while clearing the breakout figures. */
   .toc-wrap { max-width:var(--maxw); margin:0 auto; padding:0 24px; }
   nav.toc { margin:34px 0 8px; }
   .backlink { font-family:var(--font-head); font-size:13px; margin-bottom:16px; display:inline-block; color:var(--muted); }
@@ -193,14 +194,22 @@
   nav.toc a:hover { color:var(--accent); text-decoration:none; }
   nav.toc a.active { color:var(--text-1); font-weight:650; }
 
-  /* Wide screens: reserve a fixed left gutter for the rail (via body padding),
-     so the rail is truly fixed and never scrolls — and it activates at a
-     modest width instead of needing symmetric 1200px gutters. */
-  @media (min-width:1024px) {
-    body { padding-left:280px; }
+  /* Wide screens (≥1280px): the rail is a sticky left-margin column anchored to
+     the viewport CENTER (calc), so it hugs the centered reading column and
+     tracks it as the window resizes — never slamming to the viewport edge like
+     a `left:0` fixed rail. Breakout figures (1040px) may pass under it.
+       --toc-w   rail width
+       --toc-gap gap between the rail and the reading column
+     left = center − half-reading-column − gap − rail-width */
+  @media (min-width:1280px) {
+    :root { --toc-w:212px; --toc-gap:30px; }
     .toc-wrap { max-width:none; margin:0; padding:0; }
-    nav.toc { position:fixed; top:48px; left:0; width:260px; height:calc(100vh - 48px); overflow-y:auto;
-      margin:0; padding:40px 26px 40px; }
+    nav.toc {
+      position:fixed; top:48px; z-index:70;
+      left:calc(50% - (var(--maxw) / 2) - var(--toc-gap) - var(--toc-w));
+      width:var(--toc-w); height:calc(100vh - 48px); overflow-y:auto;
+      margin:0; padding:44px 22px 40px 0;
+    }
     nav.toc ol { columns:1; }
     /* active bar sits left of the number, spanning the whole (possibly wrapped) item */
     nav.toc li { margin:0 0 13px; padding-left:12px; border-left:2px solid transparent;
@@ -732,11 +741,11 @@
 
     <p>We therefore separate harness-evolution gains into three mechanisms: Overfitting, Test-Time Scaling, and Generalizable Improvement.</p>
 
-    <p>We define <b>Overfitting</b> as gains that rely on patterns specific to the optimization setting and therefore do not persist under an appropriate distribution shift. This includes exploiting dataset artifacts, or distilling task-specific knowledge from the proposer model. For example, a harness may string-match a recurring answer option if it is always correct when appears in the dataset. Similarly, on well-studied synthetic tasks, the proposer may write deterministic code tailored to the current setting without calling the executor LLM at all. <em>Such gains raise the search-split score without improving how the executor handles new tasks.</em> Among the three mechanisms, overfitting is therefore the most concerning and should be interpreted with the greatest caution.</p>
+    <p>We define <b>Overfitting</b> as gains that rely on patterns specific to the optimization setting and therefore do not persist under an appropriate distribution shift. This includes exploiting dataset artifacts, or distilling task-specific knowledge from the proposer model. For example, a harness may string-match a recurring answer option if it is always correct when it appears in the dataset. Similarly, on well-studied synthetic tasks, the proposer may write deterministic code tailored to the current setting without calling the executor LLM at all. <em>Such gains raise the search-split score without improving how the executor handles new tasks.</em> Among the three mechanisms, overfitting is therefore the most concerning and should be interpreted with the greatest caution.</p>
 
-    <p><b>Test-Time Scaling</b> sits in the middle ground. It happens when the evolved harness spend more inference compute through, for example, retries, verification, or parallel sampling<sup class="cite"><a href="#ref-6">[6]</a></sup>. The resulting gains may be matched by simply scaling the baseline to the same compute budget. While gains bought by extra compute may transfer to held-out tasks, whether they are worthwhile depends on the use case and the sensitivity to cost.</p>
+    <p><b>Test-Time Scaling</b> sits in the middle ground. It happens when the evolved harness spends more inference compute through, for example, retries, verification, or parallel sampling<sup class="cite"><a href="#ref-6">[6]</a></sup>. The resulting gains may be matched by simply scaling the baseline to the same compute budget. While gains bought by extra compute may transfer to held-out tasks, whether they are worthwhile depends on the use case and the sensitivity to cost.</p>
 
-    <p>We define <b>Generalize Improvement</b> as gains that remain after accounting for overfitting and test-time scaling. These gains may come from reusable skills, better task decomposition, or methods that address common executor errors. They are most desirable because they are more likely to work on new tasks without using more compute.</p>
+    <p>We define <b>Generalizable Improvement</b> as gains that remain after accounting for overfitting and test-time scaling. These gains may come from reusable skills, better task decomposition, or methods that address common executor errors. They are most desirable because they are more likely to work on new tasks without using more compute.</p>
 
     <p><a href="#fig-1">Figure 1</a> previews our main and most striking finding: across representative benchmarks in math, coding, creativity, and agentic tasks, most search split gains are explained by Overfitting or Test-Time Scaling; and the residual generalizable improvement is often small. The transferability of evolved harnesses to held-out test sets is even more limited, as shown in the <a href="#results-transfer">transfer analysis</a>.</p>
 
@@ -858,7 +867,7 @@
     </div>
     <p>Note that the estimated contribution of overfitting is necessarily a <em>lower bound</em>, since some may appear as implicit or entangled. Correspondingly, the residual is an <em>upper-bound estimate</em> of generalizable improvement. Even with this conservative attribution, HDA can reveal when identifiable shortcuts or additional compute explain a large share of the reported gain. We also evaluate transfer on held-out tasks directly in the <a href="#results-transfer">transfer analysis</a>.</p>
     <h3 id="benchmarks-and-experiment-setup">Benchmarks and Experiment Setup</h3>
-    <p>We evaluate harness evolution on representative benchmarks spanning <em>single-turn reasoning</em> (<span class="benchmark-name">LiveMath</span><sup class="cite"><a href="#ref-7">[7]</a></sup>, <span class="benchmark-name">CREATE</span><sup class="cite"><a href="#ref-8">[8]</a></sup>) and <em>long-horizon agentic tasks</em> (<span class="benchmark-name">ALFWorld</span><sup class="cite"><a href="#ref-9">[9]</a></sup>, <span class="benchmark-name">SWE-Bench Verified</span><sup class="cite"><a href="#ref-10">[10]</a></sup>), covering math, coding, planning, and creativity. We use <em>Claude Code (Opus 4.8)</em> as the proposer agent and evaluate various executor models with different sizes and capabilities, including Qwen-family models and Claude Haiku 4.5. The exact executor set varies by benchmark; see the <a href="appendix.html">appendix</a> for details.</p>
+    <p>We evaluate harness evolution on representative benchmarks spanning <em>single-turn reasoning</em> (<span class="benchmark-name">LiveMath</span><sup class="cite"><a href="#ref-7">[7]</a></sup>, <span class="benchmark-name">CREATE</span><sup class="cite"><a href="#ref-8">[8]</a></sup>) and <em>long-horizon agentic tasks</em> (<span class="benchmark-name">ALFWorld</span><sup class="cite"><a href="#ref-9">[9]</a></sup>, <span class="benchmark-name">SWE-bench Verified</span><sup class="cite"><a href="#ref-10">[10]</a></sup>), covering math, coding, planning, and creativity. We use <em>Claude Code (Opus 4.8)</em> as the proposer agent and evaluate various executor models with different sizes and capabilities, including Qwen-family models and Claude Haiku 4.5. The exact executor set varies by benchmark; see the <a href="appendix.html">appendix</a> for details.</p>
     <p>We largely follow the evolution framework introduced by Meta-Harness<sup class="cite"><a href="#ref-1">[1]</a></sup>. Given an executor, the proposer iteratively revises the harness while keeping the executor weights fixed. Following Meta-Harness, candidate code, evaluation scores, execution traces, and proposer logs are written to a shared filesystem, which serves as the proposer&rsquo;s memory across iterations: the proposer can inspect prior artifacts, diagnose failures, and use them to propose the next set of harnesses.</p>
     <p>We additionally add validation feedback as an intuitive attempt to encourage transfer. Training evaluations write detailed per-example results and full trajectories to the shared filesystem, while validation evaluations write only aggregate scores. We retain both the best training-selected and validation-selected harnesses and evaluate them after evolution on a held-out test set. The former lets us analyze what the usual search-set gain is made of, while the latter tests whether validation feedback improves transfer.</p>
 
@@ -906,7 +915,7 @@ H_val*   = <span class="fn">argmax</span> val score   <span class="kw">over</spa
     <div class="h2-title">Results</div>
 
     <h3 id="results-hda">Most gains come from overfitting or test-time scaling</h3>
-    <p>In many settings, a large share of the observed gain reflects overfitting or added test-time compute rather than a more capable executor. The mix varies: <span class="benchmark-name">ALFWorld</span> and <span class="benchmark-name">LiveMath</span> are dominated by overfitting, <span class="benchmark-name">CREATE</span> by test-time scaling, while <span class="benchmark-name">SWE-Bench Verified</span> shows the clearest residual improvement.</p>
+    <p>In many settings, a large share of the observed gain reflects overfitting or added test-time compute rather than a more capable executor. The mix varies: <span class="benchmark-name">ALFWorld</span> and <span class="benchmark-name">LiveMath</span> are dominated by overfitting, <span class="benchmark-name">CREATE</span> by test-time scaling, while <span class="benchmark-name">SWE-bench Verified</span> shows the clearest residual improvement.</p>
     <figure id="fig-overfit-examples">
       <div class="fig-head">Figure 4 &middot; What Overfitting and Test-Time Scaling Look Like</div>
       <div class="ocards">
@@ -950,7 +959,7 @@ for c in choices:
         </div>
 
         <div class="ocard">
-          <div class="oc-head"><a class="oc-task" href="appendix.html#hx-undefined_name_feedback">SWE-Bench</a><span class="oc-tag">O 15%</span></div>
+          <div class="oc-head"><a class="oc-task" href="appendix.html#hx-undefined_name_feedback">SWE-bench</a><span class="oc-tag">O 15%</span></div>
           <div class="oc-title">Bake in "fixes are only a few lines."</div>
           <pre><code>ADD_T,DEL_T = <span class="art">12, 8</span>
 if adds&gt;=ADD_T or \
@@ -964,7 +973,7 @@ if adds&gt;=ADD_T or \
     </figure>
 
     <p>In <span class="benchmark-name">ALFWorld</span>, evolution largely replaces the executor. All five models reach 100% training success, but HDA attributes 98% of the aggregate gain to overfitting. The smallest-model harnesses become rule-based controllers that make no LLM calls, while larger-model harnesses encode similar benchmark-specific knowledge through prompts, templates, and deterministic rules. <a class="case-link" href="appendix.html#alfworld">Appendix A1 &rarr;</a></p>
-    <p>In <span class="benchmark-name">LiveMath</span>, a dynamic multiple-choice benchmark for research-level mathematical reasoning<sup class="cite"><a href="#ref-7">[7]</a></sup>, evolution exploits a recurring dataset shortcut. The option &ldquo;a stronger result can be proven&rdquo; appears in 21 of 35 training questions and is always correct. HDA attributes 79% of the aggregate gain to this pattern. For example, the 0.8B harness improves from 5/35 to 27/35 correct, but 20 of the 22 added correct answers come from meta-option questions. <a class="case-link" href="appendix.html#livemath">Appendix A2 &rarr;</a></p>
+    <p>In <span class="benchmark-name">LiveMath</span>, a dynamic multiple-choice benchmark for research-level mathematical reasoning<sup class="cite"><a href="#ref-7">[7]</a></sup>, evolution exploits a recurring dataset shortcut. The option &ldquo;a stronger result can be proven&rdquo; appears in 21 of 35 training questions and is always correct. HDA attributes 79% of the aggregate gain to this pattern. For example, the 0.8B harness improves from 2/35 to 29/35 correct, but 20 of the 27 added correct answers come from meta-option questions. <a class="case-link" href="appendix.html#livemath">Appendix A2 &rarr;</a></p>
     <aside class="side-table" aria-label="CREATE call-matched baseline comparison">
       <div class="side-title">CREATE call-matched comparison</div>
       <table>
@@ -978,7 +987,7 @@ if adds&gt;=ADD_T or \
       <div class="note-row">Scores are Creative Utility; higher is better. B<sub>cc</sub> is the call-matched baseline.</div>
     </aside>
     <p>In <span class="benchmark-name">CREATE</span>, an associative-creativity benchmark where each prompt can have many valid answers<sup class="cite"><a href="#ref-8">[8]</a></sup>, much of the gain comes from additional inference compute. A call-matched baseline recovers 49% of the gain for Claude Haiku 4.5 and for Qwen3.6-35B-A3B, it even outperforms the evolved harness. <a class="case-link" href="appendix.html#create">Appendix A3 &rarr;</a></p>
-    <p><span class="benchmark-name">SWE-Bench Verified</span>, grounded in real GitHub issues<sup class="cite"><a href="#ref-10">[10]</a></sup>, is where evolution produces the most faithful gains &mdash; but mainly for the weaker executors, which have the most headroom. The validation-selected Qwen3-4B-Instruct-2507 harness improves held-out test from 4% to 22% (HDA: 62% residual, 15% overfitting, 23% test-time scaling), and Qwen3-30B-A3B-Instruct-2507 is cleaner still &mdash; its train-selected harness lifts held-out test from 12% to 26% with almost no overfitting or added compute (O = 0%, T = 6%, G = 94%), and validation selection transfers further (12% to 36%).</p>
+    <p><span class="benchmark-name">SWE-bench Verified</span>, grounded in real GitHub issues<sup class="cite"><a href="#ref-10">[10]</a></sup>, is where evolution produces the most faithful gains &mdash; but mainly for the weaker executors, which have the most headroom. The validation-selected Qwen3-4B-Instruct-2507 harness improves held-out test from 4% to 22% (HDA: 62% residual, 15% overfitting, 23% test-time scaling), and Qwen3-30B-A3B-Instruct-2507 is cleaner still &mdash; its train-selected harness lifts held-out test from 12% to 26% with almost no overfitting or added compute (O = 0%, T = 6%, G = 94%), and validation selection transfers further (12% to 36%).</p>
     <p>The stronger executors barely improve on held-out test despite little measured overfitting or test-time scaling. Qwen3.6-27B rises from 77% to 85% on training but from 66% to 64% on test; Qwen3-Coder-30B-A3B-Instruct rises from 56% to 69% on training but its train-selected harness drops from 40% to 34% on test (validation selection recovers only part, to 44%). Here the proposer used honest scaffolding with no artifact to neutralize, yet the gain still does not transfer &mdash; a small overfitting/compute share is not the same as generalization; near the capability ceiling, the training gain is largely fit to the selection set. <a class="case-link" href="appendix.html#swebench">Appendix A4 &rarr;</a></p>
 
     <h3 id="results-transfer">Training gains often fail to transfer</h3>
@@ -1006,7 +1015,7 @@ if adds&gt;=ADD_T or \
 
     <h3 id="results-validation">Validation-based selection offers limited protection against overfitting</h3>
     <p>At each iteration, we give the proposer an aggregate validation score for each candidate harness to encourage more generalizable improvement. We then evaluate the harness with the highest validation score on the held-out test set.</p>
-    <p>Compared with the train-selected harness, the val-selected harness improves test performance by +8.0% (<span class="benchmark-name">ALFWorld</span>), +0.8% (<span class="benchmark-name">LiveMath</span>), +7.3% (<span class="benchmark-name">SWE-Bench Verified</span>), and &minus;0.4 CU (<span class="benchmark-name">CREATE</span>) on the four benchmarks. However, the gains remain 5.9%, 11.7%, 9.3%, and 9.3 CU (on <span class="benchmark-name">ALFWorld</span>, <span class="benchmark-name">LiveMath</span>, <span class="benchmark-name">SWE-Bench Verified</span>, and <span class="benchmark-name">CREATE</span>) below the corresponding training gains. Validation feedback therefore reduces overfitting, but avoiding overfitting in harness evolution remains non-trivial.</p>
+    <p>Compared with the train-selected harness, the val-selected harness improves test performance by +8.0% (<span class="benchmark-name">ALFWorld</span>), +0.8% (<span class="benchmark-name">LiveMath</span>), +8.0% (<span class="benchmark-name">SWE-bench Verified</span>), and &minus;0.4 CU (<span class="benchmark-name">CREATE</span>) on the four benchmarks. However, the gains remain 5.9%, 11.7%, 9.3%, and 9.3 CU (on <span class="benchmark-name">ALFWorld</span>, <span class="benchmark-name">LiveMath</span>, <span class="benchmark-name">SWE-bench Verified</span>, and <span class="benchmark-name">CREATE</span>) below the corresponding training gains. Validation feedback therefore reduces overfitting, but avoiding overfitting in harness evolution remains non-trivial.</p>
 
   </div>
   <div class="col"><hr class="sec"></div>
@@ -1034,13 +1043,13 @@ if adds&gt;=ADD_T or \
     <h2>Cite</h2>
     <div class="h2-title">Citation</div>
     <p class="section-sub">Please cite this work as:</p>
-    <blockquote class="cite-as">Ding, Wenxuan. &ldquo;What Evolves When We Talk About Harness Evolution?&rdquo; <em>Blog post</em>, 2026. https://wenwen-d.github.io/blog/harness-delta-attribution/</blockquote>
+    <blockquote class="cite-as">Ding, Wenxuan, et al. &ldquo;What Evolves When We Talk About Harness Evolution?&rdquo; <em>Blog post</em>, 2026. https://wenwen-d.github.io/blog/harness-delta-attribution/</blockquote>
     <p>Or use the BibTeX citation:</p>
     <div class="bibtex-wrap">
       <button type="button" class="copy-btn" data-copy-bibtex>Copy</button>
       <pre class="bibtex"><code>@article{ding2026harnessdelta,
   title = {What Evolves When We Talk About Harness Evolution?},
-  author = {Ding, Wenxuan},
+  author = {Ding, Wenxuan and Lu, Qin and Yu, Changlong and Li, Sha and Jin, Shuowei and Liu, Xin and Durrett, Greg},
   journal = {wenwen-d.github.io},
   year = {2026},
   month = {August},
@@ -1222,6 +1231,37 @@ if adds&gt;=ADD_T or \
   addEventListener("scroll", onScroll, { passive: true });
   onScroll();
   btn.addEventListener("click", () => scrollTo({ top: 0, behavior: "smooth" }));
+})();
+</script>
+<script>
+/* TOC rail: highlight the section currently in view. */
+(() => {
+  const toc = document.getElementById("toc");
+  if (!toc) return;
+  const links = Array.from(toc.querySelectorAll("a[href^='#']"));
+  const map = new Map();               // section id -> link
+  const targets = [];
+  for (const a of links) {
+    const id = a.getAttribute("href").slice(1);
+    const el = document.getElementById(id);
+    if (el) { map.set(id, a); targets.push(el); }
+  }
+  if (!targets.length) return;
+
+  let activeId = null;
+  const setActive = (id) => {
+    if (id === activeId) return;
+    if (activeId && map.get(activeId)) map.get(activeId).classList.remove("active");
+    activeId = id;
+    if (id && map.get(id)) map.get(id).classList.add("active");
+  };
+  const io = new IntersectionObserver((entries) => {
+    // pick the entry nearest the top of the viewport that is intersecting
+    const vis = entries.filter(e => e.isIntersecting)
+                       .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+    if (vis.length) setActive(vis[0].target.id);
+  }, { rootMargin: "-20% 0px -70% 0px", threshold: 0 });
+  targets.forEach(t => io.observe(t));
 })();
 </script>
 </body>

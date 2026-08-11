@@ -196,8 +196,8 @@
     <p>On the size axis the overfitting (red) share falls as the model gets stronger: the 0.8B/2B/8B winners delete or bypass the LLM entirely (deterministic FSM + hardcoded ALFWorld priors), while the 4B/35B winners keep the model in the loop but fence it with the same benchmark-specific procedures and priors. Test-time scaling is essentially absent, and the small green slivers (4B/35B) are not statistically significant.</p>
       <div class="atg-legend">
         <span class="item"><span class="sw art"></span>Overfitting</span>
-        <span class="item"><span class="sw tts"></span>Test-time scaling</span>
-        <span class="item"><span class="sw gen"></span>Generalizable improvement</span>
+        <span class="item"><span class="sw tts"></span>Test-Time Scaling</span>
+        <span class="item"><span class="sw gen"></span>Generalizable Improvement</span>
       </div>
     <div class="harness-list">
       <details class="harness-example" id="hx-observation_tracker_agent">
@@ -379,8 +379,8 @@ CONTAINERS = <span class="art">{'drawer','fridge','safe','microwave','cabinet'}<
     <p>Every LiveMath winner rides the dataset’s dominant meta-option ("a stronger result can be proven", gold on 21/35 train items). Small models exploit it with a code-visible string-match or label-leak (hard artifact); larger models expose a softer, mechanism-level version where the un-falsifiable hedge simply survives their verification procedure. Amber marks the test-time compute (voting, debate, elimination rounds); the thin green slivers are the genuinely transferable pieces on clean items.</p>
       <div class="atg-legend">
         <span class="item"><span class="sw art"></span>Overfitting</span>
-        <span class="item"><span class="sw tts"></span>Test-time scaling</span>
-        <span class="item"><span class="sw gen"></span>Generalizable improvement</span>
+        <span class="item"><span class="sw tts"></span>Test-Time Scaling</span>
+        <span class="item"><span class="sw gen"></span>Generalizable Improvement</span>
       </div>
     <div class="harness-list">
       <details class="harness-example" id="hx-generate_multi_prompt_vote_meta">
@@ -569,8 +569,8 @@ def solve(self, item):
     <p>CREATE has no dataset artifact (O=0): every path is a live model call, so the decomposition is entirely test-time scaling (amber, the bought K-frame compute) versus generalizable structure (green). The identical diversity-orchestration paradigm splits by executor: on Haiku the 20-frame structure genuinely beats an equal-compute pooled baseline (green), while on 35B the 13-frame structure scores below its own compute-matched baseline, so it is all amber.</p>
       <div class="atg-legend">
         <span class="item"><span class="sw art"></span>Overfitting</span>
-        <span class="item"><span class="sw tts"></span>Test-time scaling</span>
-        <span class="item"><span class="sw gen"></span>Generalizable improvement</span>
+        <span class="item"><span class="sw tts"></span>Test-Time Scaling</span>
+        <span class="item"><span class="sw gen"></span>Generalizable Improvement</span>
       </div>
     <div class="harness-list">
       <details class="harness-example" id="hx-wide_diverse_twenty">
@@ -669,8 +669,8 @@ wave1_frames = [
     <p>SWE-bench is the least-hackable task, and it shows: artifact is near-zero and the gains are booked as genuine scaffolding. The cautionary finding is that genuine-looking is not the same as transferable — only the 4B (val-selected) harness meaningfully improves held-out test; the train-selected 27B and Coder-30B overfit. Amber marks the sampling budget; green marks the advisory, content-agnostic feedback channels.</p>
       <div class="atg-legend">
         <span class="item"><span class="sw art"></span>Overfitting</span>
-        <span class="item"><span class="sw tts"></span>Test-time scaling</span>
-        <span class="item"><span class="sw gen"></span>Generalizable improvement</span>
+        <span class="item"><span class="sw tts"></span>Test-Time Scaling</span>
+        <span class="item"><span class="sw gen"></span>Generalizable Improvement</span>
       </div>
     <div class="harness-list">
       <details class="harness-example" id="hx-undefined_name_feedback">
